@@ -69,11 +69,11 @@ cd drone-games/
 ./formation.sh
 После успешного выполнения скрипта вы должны увидеть следующее:
 
-![Formation](https://github.com/acsl-mipt/drone-games/.imgs/formation.png)
+![Formation](https://github.com/acsl-mipt/drone-games/blob/main/.imgs/formation.png)
 
 Запуск для пролета по лабиринту:
 ./race.sh
 После успешного выполнения скрипта вы должны увидеть следующее:
 
-![Race](https://github.com/acsl-mipt/drone-games/.imgs/race.png)
+![Race](https://github.com/acsl-mipt/drone-games/blob/main/.imgs/race.png)
 
