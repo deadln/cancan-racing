@@ -68,10 +68,12 @@ cd drone-games/
 Запуск для пролета по стадиону:
 ./formation.sh
 После успешного выполнения скрипта вы должны увидеть следующее:
+
 ![Formation](https://github.com/acsl-mipt/drone-games/.imgs/formation.png)
 
 Запуск для пролета по лабиринту:
 ./race.sh
 После успешного выполнения скрипта вы должны увидеть следующее:
+
 ![Race](https://github.com/acsl-mipt/drone-games/.imgs/race.png)
 
