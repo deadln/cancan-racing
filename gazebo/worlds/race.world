@@ -4,7 +4,7 @@
     
     <gui>
       <camera name="user_camera">
-        <pose>-8.89 -14.33 12.97 0.0 0.58 0.84</pose>
+        <pose>-7.5 -8.7 2.7 0.0 0.28 0.84</pose>
         <track_visual>
           <static>true</static>
           <use_model_frame>true</use_model_frame>
