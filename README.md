@@ -2,6 +2,7 @@
 ========
 
 Пакет предназначен для развертывания на Ubuntu 20.04 (Focal Fossa)
+
 Рекомендуется использовать "чистую" ОС с утановленными обновлениями и драйверами (install third-party software for graphics and Wi-Fi harware and additional media formats)
 
 Для своей работы использует:
