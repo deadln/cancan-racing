@@ -1,0 +1,2 @@
+--branch 1.11 --depth 1 https://github.com/acsl-mipt/Firmware.git Firmware
+--branch develop https://github.com/acsl-mipt/multiple-sitl.git multiple-sitl
