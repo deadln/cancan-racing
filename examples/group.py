@@ -226,10 +226,12 @@ if __name__ == '__main__':
 
   rospy.on_shutdown(on_shutdown_cb)
 
-  arg = sys.argv[1]
   m = 0
-  if arg == "vtol":
-    m = 1
+
+  if len(sys.argv) > 1:
+    arg = sys.argv[1]
+    if arg == "vtol":
+      m = 1
 
   offboard_loop(m)
   rospy.spin()
