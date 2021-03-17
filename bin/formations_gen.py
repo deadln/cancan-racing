@@ -12,6 +12,7 @@ from std_msgs.msg import String
 from gazebo_msgs.msg import ModelStates
 
 freq = 2
+fs_num = 4
 plane_pos={}
 formations = {}
 
@@ -40,7 +41,7 @@ def arguments():
   ...
   """
   parser.add_argument("formations", type=Path, help="directory with formation files")
-  parser.add_argument("--names", nargs='+', help="formations names for sequence")
+  parser.add_argument("--names", nargs=fs_num, help="formations names for sequence")
 
   args = parser.parse_args()
 
@@ -123,24 +124,23 @@ def intersect_on_dir(a, b, c, d):
   return False
 
 def choose_formation(init = False):
-  global f_name
+  global f_name, f_i
 
-  if args.names:
-    if init:
-      i = 0
-    else:
-      i = args.names.index(f_name) + 1
-      if i >= len(args.names):
-        i = 0
-
-    f_name = args.names[i]
+  if init:
+    f_i = 0
   else:
-    f_name = random.choice(list(formations))
+    f_i += 1
 
-  print(f"formation: {f_name}")
+  if f_i >= fs_num:
+    f_name = None
+  else:
+    if args.names:
+      f_name = args.names[f_i]
+    else:
+      f_name = random.choice(list(formations))
 
 def check_intersection(a, b, m):
-  global brd_i, f_name, args
+  global brd_i
 
   brd = borders[brd_i]
   c = (brd[0], brd[1])
@@ -180,7 +180,8 @@ def loop():
         if to_next_brd:
           break
 
-    pub_f.publish(f_name + ' ' + formations[f_name])
+    if f_name is not None:
+      pub_f.publish(f_name + ' ' + formations[f_name])
 
     rate.sleep()
 
@@ -198,5 +199,9 @@ if __name__ == '__main__':
 
   rospy.on_shutdown(on_shutdown_cb)
 
-  loop()
+  try:
+    loop()
+  except rospy.ROSInterruptException:
+    pass
+
   rospy.spin()
