@@ -233,5 +233,9 @@ if __name__ == '__main__':
     if arg == "vtol":
       m = 1
 
-  offboard_loop(m)
+  try:
+    offboard_loop(m)
+  except rospy.ROSInterruptException:
+    pass
+
   rospy.spin()
