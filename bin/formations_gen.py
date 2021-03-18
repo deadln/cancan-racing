@@ -68,7 +68,7 @@ def arguments():
 
   choose_formation(True)
 
-def read_values(name, fp, num, row_num = None):
+def read_values(name, fp, num = None, row_num = None, num_blocks = 1):
   vs = []
   with fp.open() as f:
     for l in f.readlines():
@@ -77,9 +77,14 @@ def read_values(name, fp, num, row_num = None):
         continue
 
       values = l.split()
-      if len(values) != num:
+      v_len = len(values)
+      d = v_len//num
+      o = v_len%num
+
+      if d < num_blocks or o != 0:
         print("invalid " + name)
         exit()
+
       vs.append(list(map(float,values)))
 
   if len(vs) == 0:
