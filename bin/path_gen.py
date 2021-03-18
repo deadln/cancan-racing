@@ -22,10 +22,28 @@ def arguments():
   parser.add_argument("model", help="model name")
   parser.add_argument("num", type=int, help="models number")
 
+  """
+  Каждая строка файла центральных линий содержит последовательность координат 3D точек, разделенных пробелами:
+  x1 y1 z1 x2 y2 z2 ... xN yN zN
+  Каждая центральная линия должна упираться в стену с окнами, последняя - в глухую стену.
+  """
   parser.add_argument("centrals", type=Path, help="file with centrals")
 
+  """
+  Каталог с файлами стен, каждый файл с произвольным именем содержит строки из 4 чисел, разделенных пробелами.
+  Строка содержит координаты центров окон и размеры этих окон в системе отсчета Право-Верх,если смотреть по ходу центральной линии
+  x y w h
+  """
   parser.add_argument("walls", type=Path, help="directory with walls files")
+
+  """
+  Ширина границы, пересекаемую аппаратами, которая находится на конце отрезка центральной линии
+  """
   parser.add_argument("width", type=float, help="width of wall (border)")
+
+  """
+  Имена стен (имя файла стены без расширения), соответстующие окончаниям центральных линий в количестве на одну меньше (глухая стена не описыается), чем центральных линий
+  """
   parser.add_argument("names", nargs='+', help="walls names for sequence")
 
   args = parser.parse_args()
@@ -101,6 +119,15 @@ def loop():
   global args
 
   pub={}
+  """
+  Формат строки для публикации в топик, значения разделены пробелами
+  central:
+  ИМЯ_СТЕНЫ x1 y1 z1 x2 y2 z2 ... xN yN zN
+  walls:
+  ИМЯ_СТЕНЫ x1 y1 w1 h1 x2 y2 w2 h2 ... xN yN wN hN
+
+  Если центральная линия последняя, в central вместо имени используется символ '|', а в walls ничего не публикуется.
+  """
   for n in ("central", "walls"):
     pub[n] = rospy.Publisher("~" + n, String, queue_size=10)
 
