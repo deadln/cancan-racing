@@ -105,3 +105,8 @@ git pull
 ```
 ./test-group.sh vtol
 ```
+
+Тестовые задания
+================
+
+[Тестовое задание по дисциплине Синхронный полет](https://github.com/acsl-mipt/drone-games/blob/main/TASK.md)
