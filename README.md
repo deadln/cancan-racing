@@ -110,4 +110,5 @@ git pull
 ================
 
 [Тестовое задание по дисциплине Синхронный полет](https://github.com/acsl-mipt/drone-games/blob/main/TASK_1.md)
+
 [Тестовое задание по дисциплине Командная гонка](https://github.com/acsl-mipt/drone-games/blob/main/TASK_2.md)
