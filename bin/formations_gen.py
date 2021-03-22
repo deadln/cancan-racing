@@ -168,10 +168,11 @@ def loop():
   global args, f_name
 
   """
-  Формат строки для публикации в топик: "имя_формации x1 y1 z1 x2 y2 z2 ... xN yN zN"
+  Формат строки для публикации в топик: "номер_сообщения имя_формации x1 y1 z1 x2 y2 z2 ... xN yN zN"
   """
   pub_f = rospy.Publisher("~formation", String, queue_size=10)
   prev_plane_pos = {}
+  i = 1
 
   rate = rospy.Rate(freq)
   while not rospy.is_shutdown():
@@ -188,7 +189,8 @@ def loop():
           break
 
     if f_name is not None:
-      pub_f.publish(f_name + ' ' + formations[f_name])
+      pub_f.publish(str(i) + ' ' + f_name + ' ' + formations[f_name])
+      i+=1
 
     rate.sleep()
 

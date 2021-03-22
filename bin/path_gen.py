@@ -122,12 +122,12 @@ def loop():
   """
   Формат строки для публикации в топик, значения разделены пробелами
   central:
-  ИМЯ_СТЕНЫ x1 y1 z1 x2 y2 z2 ... xN yN zN
+  НОМЕР_СООБЩЕНИЯ ИМЯ_СТЕНЫ x1 y1 z1 x2 y2 z2 ... xN yN zN
 
   Имя означает стену, на которой заканчивается эта центральная линия.
 
   walls:
-  ИМЯ_СТЕНЫ x1 y1 w1 h1 x2 y2 w2 h2 ... xN yN wN hN
+  НОМЕР_СООБЩЕНИЯ ИМЯ_СТЕНЫ x1 y1 w1 h1 x2 y2 w2 h2 ... xN yN wN hN
 
   Если центральная линия последняя, в central вместо имени используется символ '|', а в walls ничего не публикуется.
   """
@@ -135,6 +135,7 @@ def loop():
     pub[n] = rospy.Publisher("~" + n, String, queue_size=10)
 
   prev_plane_pos = {}
+  i = 1
 
   rate = rospy.Rate(freq)
   while not rospy.is_shutdown():
@@ -153,11 +154,12 @@ def loop():
     if brd_i < len(borders):
       if brd_i < len(args.names):
         p_name = args.names[brd_i]
-        pub['walls'].publish(p_name + ' ' + walls[p_name])
+        pub['walls'].publish(str(i) + ' ' + p_name + ' ' + walls[p_name])
       else:
         p_name = '|'
 
-      pub['central'].publish(p_name + ' ' + centrals[brd_i])
+      pub['central'].publish(str(i) + ' ' + p_name + ' ' + centrals[brd_i])
+      i+=1
 
     rate.sleep()
 
