@@ -14,5 +14,5 @@ fi
 ./multiple-sitl/install/$f.sh default $dir/Firmware
 
 if [ "$1" != "build" ]; then
- sudo apt install ros-noetic-gazebo-ros-control
+ sudo apt install -y ros-noetic-gazebo-ros-control
 fi
