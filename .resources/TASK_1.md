@@ -14,6 +14,18 @@
 * мультироторный (квадрокоптер);
 * самолетный (планер вертикального взлета и посадки).
 
+Габариты:
+
+* Квадрокоптер - 0.52 х 0.7 х 0.11
+* Планер - 0.45 х 1.072 х 0.1
+
+Автопилот:
+
+* [Квадрокоптер](https://github.com/acsl-mipt/drone-games/blob/main/.resources/iris.params)
+* [Планер](https://github.com/acsl-mipt/drone-games/blob/main/.resources/standard_vtol.params)
+
+[Описание параметров автопилота](https://docs.px4.io/master/en/advanced_config/parameter_reference.html)
+
 ### Гоночная трасса
 
 Гоночная трасса представляет собой спортивный стадион.
@@ -97,20 +109,6 @@
 После успешного выполнения скрипта вы должны увидеть следующее:
 
 ![Formation](https://github.com/acsl-mipt/drone-games/blob/main/.imgs/formation.png)
-
-### Параметры аппаратов
-
-Габариты:
-
-* Квадрокоптер - 0.52 х 0.7 х 0.11
-* Планер - 0.45 х 1.072 х 0.1
-
-Автопилот:
-
-* [Квадрокоптер](https://github.com/acsl-mipt/drone-games/blob/main/.resources/iris.params)
-* [Планер](https://github.com/acsl-mipt/drone-games/blob/main/.resources/standard_vtol.params)
-
-[Описание параметров автопилота](https://docs.px4.io/master/en/advanced_config/parameter_reference.html)
 
 ### Задание
 
