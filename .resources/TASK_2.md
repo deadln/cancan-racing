@@ -146,9 +146,13 @@ x1 y1 z1 x2 y2 z2 ... xN yN zN
 ./race.sh prof mc
 ```
 
-После успешного выполнения скрипта вы должны увидеть следующее:
+После успешного выполнения скрипта с квадрокоптерами вы должны увидеть следующее:
 
 ![Race](https://github.com/acsl-mipt/drone-games/blob/main/.imgs/race.png)
+
+После успешного выполнения скрипта с планерами вертикального взлета и посадки вы должны увидеть следующее:
+
+![Race_vtol](https://github.com/acsl-mipt/drone-games/blob/main/.imgs/race_vtol.png)
 
 ### Задание
 

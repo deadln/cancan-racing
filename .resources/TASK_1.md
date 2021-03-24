@@ -118,9 +118,13 @@
 ./formation.sh prof mc
 ```
 
-После успешного выполнения скрипта вы должны увидеть следующее:
+После успешного выполнения скрипта c квадрокоптерами вы должны увидеть следующее:
 
 ![Formation](https://github.com/acsl-mipt/drone-games/blob/main/.imgs/formation.png)
+
+После успешного выполнения скрипта c планерами вертикального взлета и посадки вы должны увидеть следующее:
+
+![Formation_vtol](https://github.com/acsl-mipt/drone-games/blob/main/.imgs/formation_vtol.png)
 
 ### Задание
 
