@@ -16,15 +16,13 @@
 
 #### Квадрокоптер
 
-Габариты - 0.52 х 0.7 х 0.11
-
-[Набор параметров автопилота](https://github.com/acsl-mipt/drone-games/blob/main/.resources/iris.params)
+* Габариты - 0.52 х 0.7 х 0.11
+* [Набор параметров автопилота](https://github.com/acsl-mipt/drone-games/blob/main/.resources/iris.params)
 
 #### Планер вертикального взлета и посадки
 
-Габариты - 0.45 х 1.072 х 0.1
-
-[Набор параметров автопилота](https://github.com/acsl-mipt/drone-games/blob/main/.resources/standard_vtol.params)
+* Габариты - 0.45 х 1.072 х 0.1
+* [Набор параметров автопилота](https://github.com/acsl-mipt/drone-games/blob/main/.resources/standard_vtol.params)
 
 #### [Описание параметров автопилота](https://docs.px4.io/master/en/advanced_config/parameter_reference.html)
 
