@@ -14,17 +14,19 @@
 * мультироторный (квадрокоптер);
 * самолетный (планер вертикального взлета и посадки).
 
-Габариты:
+#### Квадрокоптер
 
-* Квадрокоптер - 0.52 х 0.7 х 0.11
-* Планер - 0.45 х 1.072 х 0.1
+Габариты - 0.52 х 0.7 х 0.11
 
-Параметры автопилота:
+[Набор параметров автопилота](https://github.com/acsl-mipt/drone-games/blob/main/.resources/iris.params)
 
-* [Квадрокоптер](https://github.com/acsl-mipt/drone-games/blob/main/.resources/iris.params)
-* [Планер](https://github.com/acsl-mipt/drone-games/blob/main/.resources/standard_vtol.params)
+#### Планер вертикального взлета и посадки
 
-[Описание параметров автопилота](https://docs.px4.io/master/en/advanced_config/parameter_reference.html)
+Габариты - 0.45 х 1.072 х 0.1
+
+[Набор параметров автопилота](https://github.com/acsl-mipt/drone-games/blob/main/.resources/standard_vtol.params)
+
+#### [Описание параметров автопилота](https://docs.px4.io/master/en/advanced_config/parameter_reference.html)
 
 ### Гоночная трасса
 
@@ -150,3 +152,5 @@
 ### Определение отобранных команд
 
 Команды, которые успешно смогут выполнить тестовое задние до 12 апреля (включительно) проходят в финальную часть соревнований.
+
+С часто задаваемыми вопросами по заданию вы может ознакомиться в [FAQ](https://github.com/acsl-mipt/drone-games/blob/main/.resources/FAQ.md)
