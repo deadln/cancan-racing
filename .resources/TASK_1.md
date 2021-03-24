@@ -19,7 +19,7 @@
 * Квадрокоптер - 0.52 х 0.7 х 0.11
 * Планер - 0.45 х 1.072 х 0.1
 
-Автопилот:
+Параметры автопилота:
 
 * [Квадрокоптер](https://github.com/acsl-mipt/drone-games/blob/main/.resources/iris.params)
 * [Планер](https://github.com/acsl-mipt/drone-games/blob/main/.resources/standard_vtol.params)
