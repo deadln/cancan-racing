@@ -126,6 +126,20 @@ x1 y1 z1 x2 y2 z2 ... xN yN zN
 
 ![Race](https://github.com/acsl-mipt/drone-games/blob/main/.imgs/race.png)
 
+### Параметры аппаратов
+
+Габариты:
+
+* Квадрокоптер - 0.52 х 0.7 х 0.11
+* Планер - 0.45 х 1.072 х 0.1
+
+Автопилот:
+
+* [Квадрокоптер](https://github.com/acsl-mipt/drone-games/blob/main/.resources/iris.params)
+* [Планер](https://github.com/acsl-mipt/drone-games/blob/main/.resources/standard_vtol.params)
+
+[Описание параметров автопилота](https://docs.px4.io/master/en/advanced_config/parameter_reference.html)
+
 ### Задание
 
 Задача Команды разработать алгоритм управления группой аппаратов, который автоматически:

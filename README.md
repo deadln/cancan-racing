@@ -116,9 +116,9 @@ git pull
 Тестовые задания
 ================
 
-[Тестовое задание по дисциплине Синхронный полет](https://github.com/acsl-mipt/drone-games/blob/main/TASK_1.md)
+[Тестовое задание по дисциплине Синхронный полет](https://github.com/acsl-mipt/drone-games/blob/main/.resources/TASK_1.md)
 
-[Тестовое задание по дисциплине Командная гонка](https://github.com/acsl-mipt/drone-games/blob/main/TASK_2.md)
+[Тестовое задание по дисциплине Командная гонка](https://github.com/acsl-mipt/drone-games/blob/main/.resources/TASK_2.md)
 
-[FAQ](https://github.com/acsl-mipt/drone-games/blob/main/FAQ.md)
+[FAQ](https://github.com/acsl-mipt/drone-games/blob/main/.resources/FAQ.md)
 ================================================================
