@@ -8,8 +8,12 @@ if [ "$1" == "prof" ]; then
 elif [ "$1" == "nonprof" ]; then
   arg=""
 else
-  echo "$0 [prof | nonprof]"
+  echo "$0 [prof | nonprof] [vtol]"
   exit
+fi
+
+if [ "$2" == "vtol" ]; then
+  model="standard_vtol"
 fi
 
 ./start.sh $model $num gazebo/worlds/formation.world --ref_point 0,-72,0.1 $arg $@
