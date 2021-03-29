@@ -3,7 +3,7 @@
 
 Пакет предназначен для развертывания на Ubuntu 20.04 (Focal Fossa)
 
-Рекомендуется использовать "чистую" ОС с утановленными обновлениями и драйверами (install third-party software for graphics and Wi-Fi harware and additional media formats)
+Рекомендуется использовать "чистую" ОС с установленными обновлениями и драйверами (install third-party software for graphics and Wi-Fi hardware and additional media formats)
 
 Для своей работы использует:
 - библиотеки и окружение ROS Noetic (https://www.ros.org) ([Подробный учебник ROS](http://wiki.ros.org/ROS/Tutorials))
@@ -86,7 +86,7 @@ git pull
 ![Start](https://github.com/acsl-mipt/drone-games/blob/main/.imgs/start.png)
 
 
-Отановка
+Остановка
 
 ```
 ./stop.sh

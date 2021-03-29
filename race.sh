@@ -8,12 +8,16 @@ if [ "$1" == "prof" ]; then
 elif [ "$1" == "nonprof" ]; then
   arg=""
 else
-  echo "$0 [prof | nonprof] [vtol]"
+  echo "$0 (prof | nonprof) [mc | vtol] [num]"
   exit
 fi
 
 if [ "$2" == "vtol" ]; then
   model="standard_vtol"
+fi
+
+if [ "$3" != "" ]; then
+  num=$3
 fi
 
 ./start.sh $model $num gazebo/worlds/race.world $arg $@
