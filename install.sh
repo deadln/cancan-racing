@@ -5,6 +5,11 @@ dir=`pwd`/`dirname $0`/
 cd $dir
 ./git-subrepo.sh
 
+if [ "$1" == "update" ]; then
+ git pull
+ exit
+fi
+
 f="all"
 
 if [ "$1" == "build" ]; then
