@@ -77,11 +77,6 @@
         </gps> -->
         <plugin name="gps_plugin" filename="libgazebo_gps_plugin.so">
           <update_rate>20.0</update_rate>
-
-          <homeLatitude>55.92801</homeLatitude>
-          <homeLongitude>37.52450</homeLongitude>
-          <homeAltitude>191</homeAltitude>
-
           <robotNamespace></robotNamespace>
           <gpsNoise>false</gpsNoise>
           <gpsXYRandomWalk>2.0</gpsXYRandomWalk>
