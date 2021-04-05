@@ -194,6 +194,7 @@ def offboard_loop(mode):  # Запускается один раз
       current_obstacle[n] = {}
       current_obstacle[n]['obstacle'] = obstacles[random.randint(0,len(obstacles) - 1)]
       current_obstacle[n]['obstacle_num'] = 0
+      current_obstacle[n]['turn'] = False
 
 
   #цикл управления
@@ -211,21 +212,54 @@ def offboard_loop(mode):  # Запускается один раз
         telemetry = data[n].get('local_position/pose')  # Получение текущих координат дрона
         if telemetry is None:
           continue
-        cent_line_end = cent_lines[current_obstacle[n]['obstacle_num']][3:6]  # Получение координат второй точки центральной линии
+        # Получение координат точки центральной линии
+        if current_obstacle[n]['turn']:
+          cent_line_end = cent_lines[current_obstacle[n]['obstacle_num']][3:6]
+          wall_vect = {'x': 0, 'y': 0, 'z': 0}
+          obstacle = {'x': cent_line_end[0], 'y': cent_line_end[1], 'z': cent_line_end[2]}
+        else:
+          cent_line_end = cent_lines[current_obstacle[n]['obstacle_num']][-3:]
+          wall_vect = get_wall_norm_vect(cent_lines[current_obstacle[n]['obstacle_num']])
+          obstacle = obstacle_to_coords(cent_line_end[0], cent_line_end[1], cent_line_end[2], current_obstacle[n]['obstacle'][0], current_obstacle[n]['obstacle'][1])
+          obstacle['x'] += wall_vect['x'] * 0.5
+          obstacle['y'] += wall_vect['y'] * 0.5
+          obstacle['z'] += wall_vect['z'] * 0.5
+
         #  Получение абсолютных координат цетра отверстия
-        obstacle = obstacle_to_coords(cent_line_end[0], cent_line_end[1], cent_line_end[2], current_obstacle[n]['obstacle'][0], current_obstacle[n]['obstacle'][1])
+        #obstacle = obstacle_to_coords(cent_line_end[0], cent_line_end[1], cent_line_end[2], current_obstacle[n]['obstacle'][0], current_obstacle[n]['obstacle'][1])
+        #obstacle['x'] += wall_vect['x'] * 0.5
+        #obstacle['y'] += wall_vect['y'] * 0.5
+        #obstacle['z'] += wall_vect['z'] * 0.5
+        print('TARGET', obstacle['x'], obstacle['y'], obstacle['z'])
         print('DISTANCE', get_distance(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z, obstacle['x'], obstacle['y'], obstacle['z']))
         # Если коптер достиг отверстия
         if get_distance(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z, obstacle['x'], obstacle['y'], obstacle['z']) < EPS:
             #  Меняем цель на следующее отверстие
             print('TARGET CHANGE')
-            current_obstacle[n]['obstacle_num'] = current_obstacle[n]['obstacle_num'] + 1
-            cent_line_end = cent_lines[current_obstacle[n]['obstacle_num']][3:6]
+            if current_obstacle[n]['turn']:
+                current_obstacle[n]['turn'] = False
+                cent_line_end = cent_lines[current_obstacle[n]['obstacle_num']][-3:]
+            else:
+              current_obstacle[n]['obstacle_num'] = current_obstacle[n]['obstacle_num'] + 1
+              cent_line_end = cent_lines[current_obstacle[n]['obstacle_num']][3:6]
+              if len(cent_lines[current_obstacle[n]['obstacle_num']]) > 6:
+                current_obstacle[n]['turn'] = True
+              else:
+                current_obstacle[n]['turn'] = False
             with open(f'race/test_ws/w{current_obstacle[n]["obstacle_num"] + 1}.txt', 'r') as f:
               obstacles = str_to_coords_lists(f.read())
               current_obstacle[n]['obstacle'] = obstacles[random.randint(0,len(obstacles) - 1)]
             obstacle = obstacle_to_coords(cent_line_end[0], cent_line_end[1], cent_line_end[2], current_obstacle[n]['obstacle'][0], current_obstacle[n]['obstacle'][1])
-
+            if current_obstacle[n]['turn']:
+              wall_vect = get_wall_norm_vect(cent_lines[current_obstacle[n]['obstacle_num']])
+              obstacle['x'] += wall_vect['x'] * 0.5
+              obstacle['y'] += wall_vect['y'] * 0.5
+              obstacle['z'] += wall_vect['z'] * 0.5
+        
+        #wall_vect = get_wall_norm_vect(cent_lines[current_obstacle[n]['obstacle_num']])
+        #obstacle['x'] += wall_vect['x'] * 0.5
+        #obstacle['y'] += wall_vect['y'] * 0.5
+        #obstacle['z'] += wall_vect['z'] * 0.5
         mc_race(pt, n, dt, obstacle)
 
       pub_pt[n].publish(pt)
