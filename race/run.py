@@ -39,6 +39,14 @@ def str_to_coords_lists(s):
 def obstacle_to_coords(c_x, c_y, c_z, x, y):  # Координаты точки центральной линии, параметры отверстия
     return {'x': c_x, 'y': c_y - x, 'z': c_z + y}
         
+# Получение нормализованного вектора, направленного в сторону стены
+def get_wall_norm_vect(cent_line):
+    vect = {'x': cent_line[-3] - cent_line[-6], 'y': cent_line[-2] - cent_line[-5], 'z':  cent_line[-1] - cent_line[-4]}
+    vect_len = math.sqrt(pow(vect['x'], 2) + pow(vect['y'], 2) + pow(vect['z'], 2))
+    vect['x'] = vect['x'] / vect_len
+    vect['y'] = vect['y'] / vect_len
+    vect['z'] = vect['z'] / vect_len
+    return vect
 
 
 def subscribe_on_mavros_topics(suff, data_class):
