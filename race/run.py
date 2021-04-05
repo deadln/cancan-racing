@@ -5,6 +5,7 @@ import rospy
 import time
 import sys
 import math
+import random
 
 from sensor_msgs.msg import NavSatFix
 from geometry_msgs.msg import TwistStamped, PoseStamped
@@ -19,7 +20,7 @@ node_name = "offboard_node"
 data = {} # Словарь с топиками дронов. Ключ - номер дрона от 1 до n. Значением является некий объект через который можно обращаться к топикам посредством data[n].get('topic_name')
 lz = {}
 
-EPS = 0.1
+EPS = 0.22
 
 # Расстояние между точками
 def get_distance(x1, y1, z1, x2, y2, z2):
@@ -33,6 +34,11 @@ def str_to_coords_lists(s):
         for j in range(len(s[i])):
             s[i][j] = float(s[i][j])
     return s[:-1]
+
+# Получение центральной точки препятствия в координатах симулятора
+def obstacle_to_coords(c_x, c_y, c_z, x, y):  # Координаты точки центральной линии, параметры отверстия
+    return {'x': c_x, 'y': c_y - x, 'z': c_z + y}
+        
 
 
 def subscribe_on_mavros_topics(suff, data_class):
@@ -54,8 +60,8 @@ def service_proxy(n, path, arg_type, *args, **kwds):
 
 def arming(n, to_arm):
   d = data[n].get("state")
-  de = data[n].get('local_position/pose')
-  print('ARMING DATA\n', de.pose.position.z)
+ # de = data[n].get('local_position/pose')
+ # print('ARMING DATA\n', de.pose.position.z)
   if d is not None and d.armed != to_arm:
     service_proxy(n, "cmd/arming", CommandBool, to_arm)
 
@@ -115,22 +121,22 @@ def mc_takeoff(pt, n, dt):
     if dt>5:
       arming(n, True)
 
-#пример управления коптерами
-def mc_example(pt, n, dt):  # Повторяется с частотой freq
+# В ЭТОЙ ФУНКЦИИ МЫ БУДЕМ ЗАДАВАТЬ ПЕРЕМЕЩЕНИЕ КОПТЕРА В ЗАВИСИМОСТИ ОТ ПЕРЕДАННОЙ ЦЕЛИ
+def mc_race(pt, n, dt, target):  # Повторяется с частотой freq
   mc_takeoff(pt, n, dt)
 
   if dt>10 and dt<15:
     #скорость вверх
     set_vel(pt, 0, 0, 1)
 
-  #летим в одном направлении, разносим по высоте
-  if dt>15 and dt<20:
+  #летим в точку target
+  if dt>15:
     #set_vel(pt, 5, 0, (n-2)/2)
-    set_pos(pt, 5, 0, 10)
+    set_pos(pt, target['x'], target['y'], target['z'])
 
   #первый коптер летит по квадрату, остальные следуют с такой же горизонтальнй скоростью как первый
-  if dt>20 and dt<30:
-    set_pos(pt, 0, 5, 10)
+  #if dt>20 and dt<30:
+    #set_pos(pt, 0, 5, 10)
     #if n == 1:
     #  set_pos(pt, 0, 5, 10)
       #if dt>20:
@@ -146,12 +152,12 @@ def mc_example(pt, n, dt):  # Повторяется с частотой freq
       #set_vel(pt, v1.x, v1.y, 0)
 
   #направляем каждого в свою точку
-  if dt>30 and dt<35:
-    set_pos(pt, 0, (n-2)*3, 10)
+  #if dt>30 and dt<35:
+  #  set_pos(pt, 0, (n-2)*3, 10)
 
   #снижаем на землю
-  if dt>35:
-    set_vel(pt, 0, 0, -1)
+  #if dt>70:
+  #  set_vel(pt, 0, 0, -1)
 
 
 def offboard_loop(mode):  # Запускается один раз
@@ -178,8 +184,8 @@ def offboard_loop(mode):  # Запускается один раз
     obstacles = str_to_coords_lists(f.read())
     for n in range(1, instances_num + 1):
       current_obstacle[n] = {}
-      current_obstacle[n]['obstacle'] = obstacles[0]
-      current_obstacle[n]['obstacle_num'] = 1
+      current_obstacle[n]['obstacle'] = obstacles[random.randint(0,len(obstacles) - 1)]
+      current_obstacle[n]['obstacle_num'] = 0
 
 
   #цикл управления
@@ -189,12 +195,30 @@ def offboard_loop(mode):  # Запускается один раз
 
     #управляем каждым аппаратом централизованно
     for n in range(1, instances_num + 1):
+      # В ЭТОМ ЦИКЛЕ МЫ БУДЕМ ПОЛУЧАТЬ ДАННЫЕ О ТРАССЕ И ЗАДАВАТЬ ПОЛЁТНЫЕ ЦЕЛИ
       if dt < 10:
         set_mode(n, "OFFBOARD")
 
       if mode == 0:
-        
-        mc_example(pt, n, dt)
+        telemetry = data[n].get('local_position/pose')  # Получение текущих координат дрона
+        if telemetry is None:
+          continue
+        cent_line_end = cent_lines[current_obstacle[n]['obstacle_num']][3:6]  # Получение координат второй точки центральной линии
+        #  Получение абсолютных координат цетра отверстия
+        obstacle = obstacle_to_coords(cent_line_end[0], cent_line_end[1], cent_line_end[2], current_obstacle[n]['obstacle'][0], current_obstacle[n]['obstacle'][1])
+        print('DISTANCE', get_distance(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z, obstacle['x'], obstacle['y'], obstacle['z']))
+        # Если коптер достиг отверстия
+        if get_distance(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z, obstacle['x'], obstacle['y'], obstacle['z']) < EPS:
+            #  Меняем цель на следующее отверстие
+            print('TARGET CHANGE')
+            current_obstacle[n]['obstacle_num'] = current_obstacle[n]['obstacle_num'] + 1
+            cent_line_end = cent_lines[current_obstacle[n]['obstacle_num']][3:6]
+            with open(f'race/test_ws/w{current_obstacle[n]["obstacle_num"] + 1}.txt', 'r') as f:
+              obstacles = str_to_coords_lists(f.read())
+              current_obstacle[n]['obstacle'] = obstacles[random.randint(0,len(obstacles) - 1)]
+            obstacle = obstacle_to_coords(cent_line_end[0], cent_line_end[1], cent_line_end[2], current_obstacle[n]['obstacle'][0], current_obstacle[n]['obstacle'][1])
+
+        mc_race(pt, n, dt, obstacle)
 
       pub_pt[n].publish(pt)
 
