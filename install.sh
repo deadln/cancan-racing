@@ -3,10 +3,11 @@
 dir=`pwd`/`dirname $0`/
 
 cd $dir
+
+git pull
 ./git-subrepo.sh
 
 if [ "$1" == "update" ]; then
- git pull
  exit
 fi
 
@@ -16,7 +17,11 @@ if [ "$1" == "build" ]; then
  f="prepare"
 fi
 
-./multiple-sitl/install/$f.sh default $dir/Firmware
+cd Firmware
+git submodule deinit -f Tools/sitl_gazebo
+cd $dir
+
+./multiple-sitl/install/$f.sh nolockstep $dir/Firmware
 
 if [ "$1" != "build" ]; then
  sudo apt install -y ros-noetic-gazebo-ros-control
