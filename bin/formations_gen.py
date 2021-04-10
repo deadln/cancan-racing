@@ -14,6 +14,7 @@ freq = 2
 fs_num = 4
 plane_pos={}
 formations = {}
+finish_name = '|'
 
 def arguments():
   global args, borders, brd_i
@@ -135,13 +136,15 @@ def choose_formation(init = False):
   else:
     f_i += 1
 
-  if f_i >= fs_num:
-    f_name = None
-  else:
+  if f_i < fs_num:
     if args.names:
       f_name = args.names[f_i]
     else:
       f_name = random.choice(list(formations))
+  elif f_i == fs_num:
+    f_name = finish_name
+  else:
+    f_name = None
 
 def check_intersection(a, b, m):
   global brd_i
@@ -169,6 +172,7 @@ def loop():
 
   """
   Формат строки для публикации в топик: "номер_сообщения имя_формации x1 y1 z1 x2 y2 z2 ... xN yN zN"
+  если финишная граница пересечена, формат строки со спец символом: "номер_сообщения |"
   """
   pub_f = rospy.Publisher("~formation", String, queue_size=10)
   prev_plane_pos = {}
@@ -189,7 +193,12 @@ def loop():
           break
 
     if f_name is not None:
-      pub_f.publish(str(i) + ' ' + f_name + ' ' + formations[f_name])
+      if f_name == finish_name:
+        suf = ''
+      else:
+        suf = ' ' + formations[f_name]
+
+      pub_f.publish(str(i) + ' ' + f_name + suf)
       i+=1
 
     rate.sleep()
