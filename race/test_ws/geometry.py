@@ -28,6 +28,9 @@ class Point:
     def get_z(self):
         return self.z
 
+    def vector_length(self):
+        return self.distance(Point(0.0, 0.0, 0.0))
+
     def distance(self, other):
         dx = self.x - other.x
         dy = self.y - other.y
@@ -52,3 +55,27 @@ class Point:
     def get_dict(self):
         return {'x': self.x, 'y': self.y, 'z': self.z}
 
+    def get_cp_len(self, other_point):
+        '''lenght of cross product vector of self point and other point'''
+        tmp = Point(self.y * other_point.z - self.z * other_point.y,
+                    self.z * other_point.x - self.x * other_point.z,
+                    self.x * other_point.y - self.y * other_point.x)
+        return tmp.vector_length()
+
+
+class Line:
+    '''Line in 3d(float)'''
+
+    def __init__(self, a, b):
+        '''get line from two points'''
+        self.p0 = Point(a.x, a.y, a.z)
+        self.p1 = Point(b.x, b.y, b.z)
+
+    def get_point_dist(self, other_point):
+        '''get float distance from this line to other point'''
+        tmp1 = Point(self.p1.x, self.p1.y, self.p1.z)
+        tmp2 = Point(other_point.x, other_point.y, other_point.z)
+        tmp1.sub_point(self.p0)
+        tmp2.sub_point(self.p0)
+        sq = tmp1.get_cp_len(tmp2)
+        return sq / self.p1.distance(self.p0)
