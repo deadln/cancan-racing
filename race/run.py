@@ -59,14 +59,16 @@ def subscribe_on_mavros_topics(suff, data_class):
     rospy.Subscriber(topic, data_class, topic_cb, callback_args = (n, suff))
 
 def subscribe_on_mavros_topics_track(topic):
-   rospy.Subscriber(topic, String, topic_cb_track, callback_args = (topic))
+  current_track_data[topic] = []
+  rospy.Subscriber(topic, String, topic_cb_track, callback_args = (topic))
 
 def topic_cb(msg, callback_args):
   n, suff = callback_args
   data[n][suff] = msg
 
 def topic_cb_track(msg, topic):
-    current_track_data[topic] = msg
+    print('**topic_cb_track**')
+    current_track_data[topic].append(msg)
 
 def service_proxy(n, path, arg_type, *args, **kwds):
   service = rospy.ServiceProxy(f"/mavros{n}/{path}", arg_type)
