@@ -11,6 +11,7 @@ from sensor_msgs.msg import NavSatFix
 from geometry_msgs.msg import TwistStamped, PoseStamped
 from mavros_msgs.msg import PositionTarget, State, ExtendedState
 from geographic_msgs.msg import GeoPointStamped
+from std_msgs.msg import String
 
 from mavros_msgs.srv import SetMode, CommandBool, CommandVtolTransition, CommandHome
 
@@ -19,6 +20,7 @@ freq = 20 #Герц, частота посылки управляющих ком
 node_name = "offboard_node"
 data = {} # Словарь с топиками дронов. Ключ - номер дрона от 1 до n. Значением является некий объект через который можно обращаться к топикам посредством data[n].get('topic_name')
 lz = {}
+current_track_data = {}
 
 EPS = 0.22
 
@@ -56,9 +58,15 @@ def subscribe_on_mavros_topics(suff, data_class):
     topic = f"/mavros{n}/{suff}"
     rospy.Subscriber(topic, data_class, topic_cb, callback_args = (n, suff))
 
+def subscribe_on_mavros_topics_track(topic):
+   rospy.Subscriber(topic, String, topic_cb_track, callback_args = (topic))
+
 def topic_cb(msg, callback_args):
   n, suff = callback_args
   data[n][suff] = msg
+
+def topic_cb_track(msg, topic):
+    current_track_data[topic] = msg
 
 def service_proxy(n, path, arg_type, *args, **kwds):
   service = rospy.ServiceProxy(f"/mavros{n}/{path}", arg_type)
@@ -90,6 +98,10 @@ def subscribe_on_topics():
   #состояние
   subscribe_on_mavros_topics("state", State)
   subscribe_on_mavros_topics("extended_state", ExtendedState)
+
+  # Трасса профессиональной лиги
+  subscribe_on_mavros_topics_track("/path_generator/central")
+  subscribe_on_mavros_topics_track("/path_generator/walls")
 
 
 def on_shutdown_cb():
@@ -184,7 +196,7 @@ def offboard_loop(mode):  # Запускается один раз
   cent_lines = []
   with open('race/centrals.txt', 'r') as f:
     cent_lines = str_to_coords_lists(f.read())
-  print('cent_lines', cent_lines)
+  #print('cent_lines', cent_lines)
   
   current_obstacle = {}
   obstacles = []
@@ -201,7 +213,11 @@ def offboard_loop(mode):  # Запускается один раз
   rate = rospy.Rate(freq)
   while not rospy.is_shutdown():
     dt = time.time() - t0
-
+    central = current_track_data.get('/path_generator/central')
+    walls = current_track_data.get('/path_generator/walls')
+    if central is not None and walls is not None:
+      print('CENTRAL', central)
+      print('WALLS', walls)
     #управляем каждым аппаратом централизованно
     for n in range(1, instances_num + 1):
       # В ЭТОМ ЦИКЛЕ МЫ БУДЕМ ПОЛУЧАТЬ ДАННЫЕ О ТРАССЕ И ЗАДАВАТЬ ПОЛЁТНЫЕ ЦЕЛИ
@@ -230,8 +246,8 @@ def offboard_loop(mode):  # Запускается один раз
         #obstacle['x'] += wall_vect['x'] * 0.5
         #obstacle['y'] += wall_vect['y'] * 0.5
         #obstacle['z'] += wall_vect['z'] * 0.5
-        print('TARGET', obstacle['x'], obstacle['y'], obstacle['z'])
-        print('DISTANCE', get_distance(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z, obstacle['x'], obstacle['y'], obstacle['z']))
+        #print('TARGET', obstacle['x'], obstacle['y'], obstacle['z'])
+        #print('DISTANCE', get_distance(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z, obstacle['x'], obstacle['y'], obstacle['z']))
         # Если коптер достиг отверстия
         if get_distance(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z, obstacle['x'], obstacle['y'], obstacle['z']) < EPS:
             #  Меняем цель на следующее отверстие
