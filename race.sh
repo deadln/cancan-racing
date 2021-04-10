@@ -30,4 +30,5 @@ mode="mc"
 if [model == "standard_vtol"]; then
   mode="vtol"
 fi
-./race/run.py $mode
+#./race/run.py $mode
+./race/task_prof.py $num
