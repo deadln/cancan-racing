@@ -42,6 +42,12 @@ class Point:
         self.y += other.get_y
         self.z += other.get_z
 
+    def normalize_vector(self):
+        ln = self.vector_length()
+        self.x /= ln
+        self.y /= ln
+        self.z /= ln
+
     def sub_point(self, other):
         self.x -= other.get_x
         self.y -= other.get_y
@@ -55,11 +61,14 @@ class Point:
     def get_dict(self):
         return {'x': self.x, 'y': self.y, 'z': self.z}
 
+    def get_cp(self, other_point):
+        return Point(self.y * other_point.z - self.z * other_point.y,
+                     self.z * other_point.x - self.x * other_point.z,
+                     self.x * other_point.y - self.y * other_point.x)
+
     def get_cp_len(self, other_point):
         '''lenght of cross product vector of self point and other point'''
-        tmp = Point(self.y * other_point.z - self.z * other_point.y,
-                    self.z * other_point.x - self.x * other_point.z,
-                    self.x * other_point.y - self.y * other_point.x)
+        tmp = self.get_cp(other_point)
         return tmp.vector_length()
 
 
@@ -79,3 +88,27 @@ class Line:
         tmp2.sub_point(self.p0)
         sq = tmp1.get_cp_len(tmp2)
         return sq / self.p1.distance(self.p0)
+
+
+class Surface:
+    '''surface in 3d'''
+
+    def __init__(self, a, b, c):
+        self.p0 = Point(a.x, a.y, a.z)
+        self.p1 = Point(b.x, b.y, b.z)
+        tmp1 = Point(b.x, b.y, b.z)
+        self.p2 = Point(c.x, c.y, c.z)
+        tmp2 = Point(c.x, c.y, c.z)
+
+        self.nv = tmp1.get_cp(tmp2)
+        self.nv.normalize_vector()
+
+        self.d = -(self.nv.x * a.x + self.nv.y * a.y + self.nv.z * a.z)
+
+    def substitute_point(self, a):
+        '''substitute point to surface equation'''
+        return self.nv.x * a.x + self.nv.y * a.y + self.nv.z * a.z + self.d
+
+    def get_point_dist(self, other_point):
+        '''get distance to point from this surface'''
+        return self.substitute_point(other_point)
