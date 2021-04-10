@@ -49,9 +49,9 @@ class Point:
         self.z /= ln
 
     def sub_point(self, other):
-        self.x -= other.get_x
-        self.y -= other.get_y
-        self.z -= other.get_z
+        self.x -= other.get_x()
+        self.y -= other.get_y()
+        self.z -= other.get_z()
 
     def from_dict(self, a):
         self.x = a['x']
@@ -100,6 +100,9 @@ class Surface:
         self.p2 = Point(c.x, c.y, c.z)
         tmp2 = Point(c.x, c.y, c.z)
 
+        tmp1.sub_point(self.p0)
+        tmp2.sub_point(self.p0)
+
         self.nv = tmp1.get_cp(tmp2)
         self.nv.normalize_vector()
 
@@ -111,4 +114,4 @@ class Surface:
 
     def get_point_dist(self, other_point):
         '''get distance to point from this surface'''
-        return self.substitute_point(other_point)
+        return math.fabs(self.substitute_point(other_point))
