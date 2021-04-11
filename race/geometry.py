@@ -4,7 +4,7 @@ import math
 class Point:
     '''3d Point (float)'''
 
-    def __init__(self, x, y, z):
+    def __init__(self, x=0, y=0, z=0):
         '''Defines x and y variables'''
         self.x = x
         self.y = y
@@ -38,9 +38,9 @@ class Point:
         return math.sqrt(dx ** 2 + dy ** 2 + dz ** 2)
 
     def add_point(self, other):
-        self.x += other.get_x
-        self.y += other.get_y
-        self.z += other.get_z
+        self.x += other.get_x()
+        self.y += other.get_y()
+        self.z += other.get_z()
 
     def normalize_vector(self):
         ln = self.vector_length()
