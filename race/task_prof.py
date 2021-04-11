@@ -39,7 +39,7 @@ lz = {}
 TURN_EPS = 2
 DELAY_BETWEEN_DRONES = 2
 TARGET_POINT_BIAS = 1
-TARGET_SURFACE_BIAS = 0.4
+TARGET_SURFACE_BIAS = 0.5
 
 ## Вспомогательные функции
 
@@ -218,49 +218,52 @@ def mc_race(pt, n, dt, target):  # Повторяется с частотой fr
 
 
 def get_lz(n):
-    print(f'New LZ for {n}')
-    # # Точка отчёта - последняя точка последней центральной линии
-    # land_zone = centrals[-1]['points'][-1]
-    # norm_vect = get_wall_norm_vect(centrals[-1]['points'])  # Вектор в глухую стену
-    # # Сдвигаем точку до другого края посадочной площадки
-    # land_zone['x'] -= norm_vect['x'] * 18.5
-    # land_zone['y'] -= norm_vect['y'] * 18.5
-    # # Поворачиваем вектор на 90 градусов влево
-    # swp = norm_vect['x']
-    # norm_vect['x'] =  norm_vect['y'] * (-1)
-    # norm_vect['y'] = swp
-    # # Сдвигаемся в левый нижний угол посадочной площадки
-    # land_zone['x'] += norm_vect['x'] * 8.5
-    # land_zone['y'] += norm_vect['y'] * 8.5
-    # lz_num = len(lz)  # Номер посадочного места
-    # norm_vect = get_wall_norm_vect(centrals[-1]['points'])
-    # # Отсчитываем посадочное место в сторону глухой стены
-    # land_zone['x'] += norm_vect['x'] * (lz_num // 8)
-    # # Поворачиваем вектор на 90 градусов вправо
-    # swp = norm_vect['x']
-    # norm_vect['x'] = norm_vect['y']
-    # norm_vect['y'] = swp * (-1)
-    # # Отсчитываем посадочное место вправо
-    # land_zone['y'] += norm_vect['y'] * (lz_num % 8)
-    # land_zone['z'] = 1
-    land_zone = {'x': 120, 'y': 120, 'z': 5}
+    # Точка отчёта - последняя точка последней центральной линии
+    land_zone = dict(centrals[-1]['points'][-1])
+    norm_vect = get_wall_norm_vect(centrals[-1]['points'])  # Вектор в глухую стену
+    # Сдвигаем точку до другого края посадочной площадки
+    land_zone['x'] -= norm_vect['x'] * 18
+    land_zone['y'] -= norm_vect['y'] * 18
+    # Поворачиваем вектор на 90 градусов влево
+    swp = norm_vect['x']
+    norm_vect['x'] =  norm_vect['y'] * (-1)
+    norm_vect['y'] = swp
+    # Сдвигаемся в левый нижний угол посадочной площадки
+    land_zone['x'] += norm_vect['x'] * 8
+    land_zone['y'] += norm_vect['y'] * 8
+    lz_num = len(lz)  # Номер посадочного места
+    norm_vect = get_wall_norm_vect(centrals[-1]['points'])
+    # Отсчитываем посадочное место в сторону глухой стены
+    land_zone['x'] += norm_vect['x'] * (lz_num // 8)
+    land_zone['y'] += norm_vect['y'] * (lz_num // 8)
+    # Поворачиваем вектор на 90 градусов вправо
+    swp = norm_vect['x']
+    norm_vect['x'] = norm_vect['y']
+    norm_vect['y'] = swp * (-1)
+    print('NORM', norm_vect)
+    # Отсчитываем посадочное место вправо
+    land_zone['x'] += norm_vect['x'] * (lz_num % 8)
+    land_zone['y'] += norm_vect['y'] * (lz_num % 8)
+    land_zone['z'] = 1
+    # land_zone = {'x': 120, 'y': 120, 'z': 5}
+    print(f'New LZ for {n}:', land_zone)
     return land_zone
 
 def set_target(n, telemetry):
     target = {'x': 0, 'y': 0, 'z': 0}
     try:
         if centrals[current_obstacle[n]['wall_num']]['name'] == '|':
-            print(f'{n} is landing')
+            #print(f'{n} is landing')
             current_obstacle[n]['landing'] = True
 
-        # Если дрон пролетел последнее препятствие
-        # if current_obstacle[n]['wall_num'] >= len(walls) and centrals[current_obstacle[n]['wall_num']]['name'] == "|":
-        #     if n not in lz.keys():
-        #         lz[n] = get_lz(n)
-        #     target = lz[n]
+         # Если дрон пролетел последнее препятствие
+        if current_obstacle[n]['landing']:
+            if n not in lz.keys():
+                lz[n] = get_lz(n)
+            target = lz[n]
             #print(f'{n} got LZ at', target)
         # Если точка последняя, значит надо лететь в отверстие в стене
-        if current_obstacle[n]['point_num'] == len(centrals[current_obstacle[n]['wall_num']]['points']) - 1:
+        elif current_obstacle[n]['point_num'] == len(centrals[current_obstacle[n]['wall_num']]['points']) - 1:
             # Если отверстие не назначено, то назначить случайное
             if 'hole_num' not in current_obstacle[n].keys():
                 current_obstacle[n]['hole_num'] = random.randint(0, len(
@@ -272,7 +275,7 @@ def set_target(n, telemetry):
                                             current_obstacle[n]['hole_num']])
             wall_vect = get_wall_norm_vect(centrals[current_obstacle[n]['wall_num']]['points'])
             for key in target.keys():
-                target[key] += wall_vect['x'] * TARGET_POINT_BIAS
+                target[key] += wall_vect[key] * TARGET_POINT_BIAS
         # В противном случае сначала надо достигнуть точки центральной линии по пути
         else:
             target = centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num']]
@@ -310,7 +313,6 @@ def offboard_loop():  # Запускается один раз
             wall = to_holes_list(str(wall.data))
             if len(centrals) == 0 or centrals[-1]['name'] != central['name']:
                 centrals.append(central)
-                print('GOT NEW CENTRAL')
             if wall is not None and len(walls) == 0 or walls[-1]['name'] != wall['name']:
                 # Построение плоскости
                 p1 = dict_to_point(central['points'][-1])
@@ -328,13 +330,9 @@ def offboard_loop():  # Запускается один раз
                 p1.add_point(norm_vect)
                 p2.add_point(norm_vect)
                 p3.add_point(norm_vect)
-                print('P1', p1.get_dict())
-                print('P2', p2.get_dict())
-                print('P3', p3.get_dict())
                 wall['surface'] = Surface(p1, p2, p3)
                 wall['surface_sign'] = sign(wall['surface'].substitute_point(dict_to_point(central['points'][-1])))
                 walls.append(wall)
-                print('GOT NEW WALL')
         else:
             continue
         # управляем каждым аппаратом централизованно
@@ -351,35 +349,26 @@ def offboard_loop():  # Запускается один раз
                 continue
 
             target = set_target(n, telemetry)
-
-            # if get_distance(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z,
-            #                 target['x'], target['y'], target['z']) < TURN_EPS:
             pos = Point(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z)
-            print('NUM OF CENTRALS:', len(centrals))
-            print(f'CURRENT CENTRAL NUM OF {n}:', current_obstacle[n]['wall_num'])
-            print('NUM OF POINTS:', len(centrals[current_obstacle[n]['wall_num']]['points']))
-            print(f'CURRENT POINT OF {n}:', current_obstacle[n]['point_num'])
-            # current_obstacle[n]['point_num']
-            # len(centrals[current_obstacle[n]['wall_num']]['points']) - 1
-            # walls[current_obstacle[n]['wall_num']]['surface_sign']
-            # walls[current_obstacle[n]['wall_num']]['surface'].substitute_point(pos)
-            if current_obstacle[n]['point_num'] == len(centrals[current_obstacle[n]['wall_num']]['points']) - 1 and \
-                walls[current_obstacle[n]['wall_num']]['surface_sign'] != sign(walls[current_obstacle[n]['wall_num']]['surface'].substitute_point(pos)):
-            # if get_distance(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z,
-            #                 target['x'], target['y'], target['z']) < TURN_EPS:
-                print('NEXT WALL')
-                # if current_obstacle[n]['point_num'] == len(centrals[current_obstacle[n]['wall_num']]['points']) - 1:
-                current_obstacle[n]['wall_num'] += 1
-                current_obstacle[n]['point_num'] = 1
-                target = set_target(n, telemetry)
-            elif current_obstacle[n]['point_num'] < len(centrals[current_obstacle[n]['wall_num']]['points']) - 1 and \
-                    get_distance(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z,
-                              target['x'], target['y'], target['z']) < TURN_EPS:
-                print('NEXT POINT')
-                current_obstacle[n]['point_num'] += 1
-                target = set_target(n, telemetry)
+            try:
+                if current_obstacle[n]['landing']:
+                    pass
+                elif current_obstacle[n]['point_num'] == len(centrals[current_obstacle[n]['wall_num']]['points']) - 1 and \
+                    walls[current_obstacle[n]['wall_num']]['surface_sign'] != sign(walls[current_obstacle[n]['wall_num']]['surface'].substitute_point(pos)):
+                    print('NEXT WALL')
+                    current_obstacle[n]['wall_num'] += 1
+                    current_obstacle[n]['point_num'] = 1
+                    target = set_target(n, telemetry)
+                elif current_obstacle[n]['point_num'] < len(centrals[current_obstacle[n]['wall_num']]['points']) - 1 and \
+                        get_distance(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z,
+                                  target['x'], target['y'], target['z']) < TURN_EPS:
+                    print('NEXT POINT')
+                    current_obstacle[n]['point_num'] += 1
+                    target = set_target(n, telemetry)
+            except IndexError:
+                target = None
 
-            #print('TARGET', target)
+            #print(f'TARGET of {n}:', target)
             if target is not None:
                 mc_race(pt, n, dt, target)
                 pub_pt[n].publish(pt)
