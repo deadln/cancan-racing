@@ -26,24 +26,27 @@ from geometry import *
 instances_num = 6  # количество аппаратов
 freq = 20  # Герц, частота посылки управляющих команд аппарату
 node_name = "offboard_node"
-# Словарь с топиками дронов. Ключ - номер дрона от 1 до n. Значением является некий объект через который можно
-# обращаться к топикам посредством data[n].get('topic_name')
+# Словарь с топиками дронов. Ключ - номер дрона от 1 до n. Значением является последнее полученное от топика сообщение.
+# Доступ: data[n].get('topic_name')
 data = {}
+# Словарь, хранящие сообщения из топиков центральных линий и стен
 current_track_data = {}
+# Списки центральных линий и стен
 centrals = []
 walls = []
 
 current_obstacle = {}  # Словарь с текущими препятствиями для отдельных аппаратов
-lz = {}
+lz = {}  # Словарь с местами "посадки" для дронов, пролетевших трассу
 
-TURN_EPS = 2
-DELAY_BETWEEN_DRONES = 2
-TARGET_POINT_BIAS = 1
-TARGET_SURFACE_BIAS = 0.5
+TURN_EPS = 2  # Окрестность, при вхождении в которую поворот считается пройденным
+DELAY_BETWEEN_DRONES = 1  # Задержка между вылетами дронов в секундах
+TARGET_POINT_BIAS = 1  # Величина смещения точки цели полёта
+TARGET_SURFACE_BIAS = 0.5  # Величина смещения плоскости стены
 
 ## Вспомогательные функции
 
 
+# Функция знака
 def sign(x):
     if x > 0:
         return 1
@@ -52,6 +55,7 @@ def sign(x):
     return 0
 
 
+# Получить из сообщения топика список точек центральной линии
 def to_points_list(points_string):
     lst = points_string.split()
     res = {'name': lst[1], 'points': []}
@@ -62,17 +66,18 @@ def to_points_list(points_string):
     return res
 
 
+# Получить из сообщения топика список отверстий стены
 def to_holes_list(holes_string):
     lst = holes_string.split()
     res = {'name': lst[1], 'holes': []}
     i = 2
     while i < len(lst):
         res['holes'].append(
-            {'x': float(lst[i]), 'y': float(lst[i + 1]), 'w': float(lst[i + 2]), 'h': float(lst[i + 3])})
+            {'x': float(lst[i]), 'y': float(lst[i + 1]), 'w': float(lst[i + 2]), 'h': float(lst[i + 3]), 'drones': 0})
         i += 4
     return res
 
-
+# Преобразование словаря точки в объект Point
 def dict_to_point(voc):
     return Point(voc['x'], voc['y'], voc['z'])
 
@@ -92,6 +97,7 @@ def get_wall_norm_vect(cent_line):
     vect['z'] = vect['z'] / vect_len
     return vect
 
+# Поворот вектора в плоскости XY на 90 вправо (dir >= 0) или влево (dir < 0)
 def rotate_vect_xy(vect, dir=1):
     if dir < 0:
         swp = vect['x']
@@ -110,6 +116,7 @@ def get_distance(x1, y1, z1, x2, y2, z2):
 
 ## Функции связанные с полётом и ROS
 
+# Стартовая функция для подписывания на топики
 def subscribe_on_topics():
     # глобальная (GPS) система координат
     subscribe_on_mavros_topics("global_position/global", NavSatFix)
@@ -127,44 +134,46 @@ def subscribe_on_topics():
     subscribe_on_mavros_topics_track("/path_generator/walls")
 
 
+# Подписываемся на Mavros топики всех аппаратов
 def subscribe_on_mavros_topics(suff, data_class):
-    # подписываемся на Mavros топики всех аппаратов
     for n in range(1, instances_num + 1):
         data[n] = {'wall_num': 0}
         topic = f"/mavros{n}/{suff}"
         rospy.Subscriber(topic, data_class, topic_cb, callback_args=(n, suff))
 
 
+# Подписываемся на Mavros топики трассы
 def subscribe_on_mavros_topics_track(topic):
     rospy.Subscriber(topic, String, topic_cb_track, callback_args=(topic))
 
-
+# При публикаци нового сообщения дронов
 def topic_cb(msg, callback_args):
     n, suff = callback_args
     data[n][suff] = msg
 
 
+# При публикаци нового сообщения трассы
 def topic_cb_track(msg, topic):
     current_track_data[topic] = msg
 
-
+# При выключении ноды
 def on_shutdown_cb():
     rospy.logfatal("shutdown")
 
-
+# Прокси для сервиса (арминг или переключение полётного режима)
 def service_proxy(n, path, arg_type, *args, **kwds):
     service = rospy.ServiceProxy(f"/mavros{n}/{path}", arg_type)
     ret = service(*args, **kwds)
 
-    #rospy.loginfo(f"{n}: {path} {args}, {kwds} => {ret}")  # Дебаг-вывод при обращении к сервисам
+    # rospy.loginfo(f"{n}: {path} {args}, {kwds} => {ret}")  # Дебаг-вывод при обращении к сервисам
 
-
+# Арминг
 def arming(n, to_arm):
     d = data[n].get("state")
     if d is not None and d.armed != to_arm:
         service_proxy(n, "cmd/arming", CommandBool, to_arm)
 
-
+# Переключение режима
 def set_mode(n, new_mode):
     d = data[n].get("state")
     if d is not None and d.mode != new_mode:
@@ -195,6 +204,7 @@ def set_vel(pt, vx, vy, vz):
     pt.velocity.z = vz
 
 
+# Взлёт
 def mc_takeoff(pt, n, dt):
     if dt < 15:
         # скорость вверх
@@ -204,7 +214,18 @@ def mc_takeoff(pt, n, dt):
         if dt > 5:
             arming(n, True)
 
+# Найти отверстие в котором назначено меньше всего дронов
+def get_least_count_hole(holes_list):
+    min_val = 100
+    min_num = 0
+    for i in range(len(holes_list)):
+        if holes_list[i]['drones'] < min_val:
+            min_val = holes_list[i]['drones']
+            min_num = i
+    holes_list[min_num]['drones'] += 1
+    return min_num
 
+# Основная функция полётных команд
 def mc_race(pt, n, dt, target):  # Повторяется с частотой freq
     mc_takeoff(pt, n, dt)
 
@@ -215,8 +236,10 @@ def mc_race(pt, n, dt, target):  # Повторяется с частотой fr
     # летим в точку target
     if dt > 15 + (n - 1) * DELAY_BETWEEN_DRONES:
         set_pos(pt, target['x'], target['y'], target['z'])
+    elif dt > 15:
+        set_vel(pt, 0, 0, 0.1)
 
-
+# Получить место для посадки
 def get_lz(n):
     # Точка отчёта - последняя точка последней центральной линии
     land_zone = dict(centrals[-1]['points'][-1])
@@ -249,11 +272,11 @@ def get_lz(n):
     print(f'New LZ for {n}:', land_zone)
     return land_zone
 
+# Получить полётную цель
 def set_target(n, telemetry):
     target = {'x': 0, 'y': 0, 'z': 0}
     try:
         if centrals[current_obstacle[n]['wall_num']]['name'] == '|':
-            #print(f'{n} is landing')
             current_obstacle[n]['landing'] = True
 
          # Если дрон пролетел последнее препятствие
@@ -261,13 +284,12 @@ def set_target(n, telemetry):
             if n not in lz.keys():
                 lz[n] = get_lz(n)
             target = lz[n]
-            #print(f'{n} got LZ at', target)
         # Если точка последняя, значит надо лететь в отверстие в стене
         elif current_obstacle[n]['point_num'] == len(centrals[current_obstacle[n]['wall_num']]['points']) - 1:
             # Если отверстие не назначено, то назначить случайное
-            if 'hole_num' not in current_obstacle[n].keys():
-                current_obstacle[n]['hole_num'] = random.randint(0, len(
-                    walls[current_obstacle[n]['wall_num']]['holes']) - 1)
+            if current_obstacle[n]['hole_num'] == -1:
+                current_obstacle[n]['hole_num'] = get_least_count_hole(walls[current_obstacle[n]['wall_num']]['holes'])
+                print('HOLES CONFIGURATION', walls[current_obstacle[n]['wall_num']]['holes'])
             # Получаем абсолютные координаты отверстия с помощью последней точки центральной линии и локальных
             # координат отверстия
             target = obstacle_to_coords(centrals[current_obstacle[n]['wall_num']]['points'][-1],
@@ -283,7 +305,7 @@ def set_target(n, telemetry):
         target = None
     return target
 
-
+# Функция цикла автономного полёта
 def offboard_loop():  # Запускается один раз
     pub_pt = {}
     # создаем топики, для публикации управляющих значений
@@ -300,6 +322,7 @@ def offboard_loop():  # Запускается один раз
         current_obstacle[n] = {}
         current_obstacle[n]['wall_num'] = 0
         current_obstacle[n]['point_num'] = 1
+        current_obstacle[n]['hole_num'] = -1
         current_obstacle[n]['landing'] = False
 
     # цикл управления
@@ -308,6 +331,7 @@ def offboard_loop():  # Запускается один раз
         dt = time.time() - t0
         central = current_track_data.get('/path_generator/central')
         wall = current_track_data.get('/path_generator/walls')
+        # Обновление списков стен и центральных линий
         if central is not None and wall is not None:
             central = to_points_list(str(central.data))
             wall = to_holes_list(str(wall.data))
@@ -332,14 +356,16 @@ def offboard_loop():  # Запускается один раз
                 p3.add_point(norm_vect)
                 wall['surface'] = Surface(p1, p2, p3)
                 wall['surface_sign'] = sign(wall['surface'].substitute_point(dict_to_point(central['points'][-1])))
+                # TODO: Построение прямой для каждой точки
                 walls.append(wall)
         else:
             continue
         # управляем каждым аппаратом централизованно
         for n in range(1, instances_num + 1):
             # В ЭТОМ ЦИКЛЕ МЫ БУДЕМ ПОЛУЧАТЬ ДАННЫЕ О ТРАССЕ И ЗАДАВАТЬ ПОЛЁТНЫЕ ЦЕЛИ
-            pt = PositionTarget()  # Объект, посредством которого можно задать желаемое положение дрона и желаемые вектора скорости
-            # см. также описание mavlink сообщения https://mavlink.io/en/messages/common.html#SET_POSITION_TARGET_LOCAL_NED
+            pt = PositionTarget()  # Объект, посредством которого можно задать желаемое положение дрона и желаемые
+            # вектора скорости, см. также описание mavlink сообщения
+            # https://mavlink.io/en/messages/common.html#SET_POSITION_TARGET_LOCAL_NED
             pt.coordinate_frame = pt.FRAME_LOCAL_NED
 
             set_mode(n, "OFFBOARD")  # Переключение в режим полёта по программе
@@ -351,14 +377,17 @@ def offboard_loop():  # Запускается один раз
             target = set_target(n, telemetry)
             pos = Point(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z)
             try:
-                if current_obstacle[n]['landing']:
+                if current_obstacle[n]['landing']: # Если назначена посадка
                     pass
+                # Если пересечена плоскость стены
                 elif current_obstacle[n]['point_num'] == len(centrals[current_obstacle[n]['wall_num']]['points']) - 1 and \
                     walls[current_obstacle[n]['wall_num']]['surface_sign'] != sign(walls[current_obstacle[n]['wall_num']]['surface'].substitute_point(pos)):
                     print('NEXT WALL')
                     current_obstacle[n]['wall_num'] += 1
                     current_obstacle[n]['point_num'] = 1
+                    current_obstacle[n]['hole_num'] = -1
                     target = set_target(n, telemetry)
+                # Если достигнута окрестность центра поворота
                 elif current_obstacle[n]['point_num'] < len(centrals[current_obstacle[n]['wall_num']]['points']) - 1 and \
                         get_distance(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z,
                                   target['x'], target['y'], target['z']) < TURN_EPS:
