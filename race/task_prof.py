@@ -38,12 +38,12 @@ walls = []
 current_obstacle = {}  # Словарь с текущими препятствиями для отдельных аппаратов
 lz = {}  # Словарь с местами "посадки" для дронов, пролетевших трассу
 
-TURN_EPS = 5  # Окрестность, при вхождении в которую поворот считается пройденным
-LINE_EPS = 0.4  # Окрестность линии, при вхождению в которую режим управления переключается на векторный
-DELAY_BETWEEN_DRONES = 1  # Задержка между вылетами дронов в секундах
-TARGET_POINT_BIAS = -1  # Величина смещения точки цели полёта
-TARGET_SURFACE_BIAS = 0.4  # Величина смещения плоскости стены
-SPEED = 5  # Скорость сближения с отверстием
+TURN_EPS = 2  # Окрестность, при вхождении в которую поворот считается пройденным
+LINE_EPS = 0.25  # Окрестность линии, при вхождению в которую режим управления переключается на векторный
+DELAY_BETWEEN_DRONES = 2  # Задержка между вылетами дронов в секундах
+TARGET_POINT_BIAS = -0.5  # Величина смещения точки цели полёта
+TARGET_SURFACE_BIAS = 0.3  # Величина смещения плоскости стены
+SPEED = 3  # Скорость сближения с отверстием
 
 
 ## Вспомогательные функции
@@ -86,9 +86,30 @@ def dict_to_point(voc):
     return Point(voc['x'], voc['y'], voc['z'])
 
 
-# Получение центральной точки препятствия в координатах симулятора
-def obstacle_to_coords(central_point, hole):  # Координаты точки центральной линии, параметры отверстия
-    return {'x': central_point['x'], 'y': central_point['y'] - hole['x'], 'z': central_point['z'] + hole['y']}
+# Получение центральной точки препятствия в координатах симулятора TODO: ИСПРАВИТЬ!!!
+def obstacle_to_coords(central, hole):  # Координаты точки центральной линии, параметры отверстия
+    #print('CENTRAL',central)
+    #central_point = dict(central['points'][-1])
+    p1 = dict(central[-1])
+    p2 = dict(central[-1])
+    p2['z'] += 1
+    p3 = dict(central[-1])
+    norm_vect = get_wall_norm_vect(central)
+    norm_vect = rotate_vect_xy(norm_vect)
+    for key in p3.keys():
+        p3[key] += norm_vect[key]
+    vx = dict(p3)
+    for key in vx.keys():
+        vx[key] -= p1[key]
+    vy = dict(p2)
+    for key in vy.keys():
+        vy[key] -= p1[key]
+    res = dict(p1)
+    for key in res.keys():
+        res[key] += vx[key] * hole['x']
+    for key in res.keys():
+        res[key] += vy[key] * hole['y']
+    return res
 
 
 # Получение нормализованного вектора, направленного в сторону стены
@@ -302,6 +323,7 @@ def set_target(n, telemetry):
     target = {'x': 0, 'y': 0, 'z': 0}
     try:
         if centrals[current_obstacle[n]['wall_num']]['name'] == '|':
+            #print(f'{n} is now landing')
             current_obstacle[n]['landing'] = True
 
         # Если дрон пролетел последнее препятствие
@@ -310,6 +332,7 @@ def set_target(n, telemetry):
                 lz[n] = get_lz(n)
             target = lz[n]
             target['mode'] = 'pos'
+            target['tag'] = 'landing'
         # Если точка последняя, значит надо лететь в отверстие в стене
         elif current_obstacle[n]['point_num'] == len(centrals[current_obstacle[n]['wall_num']]['points']) - 1:
             # Если отверстие не назначено, то назначить наименее занятое
@@ -317,7 +340,7 @@ def set_target(n, telemetry):
                 current_obstacle[n]['hole_num'] = get_least_count_hole(walls[current_obstacle[n]['wall_num']]['holes'])
             # Получаем абсолютные координаты отверстия с помощью последней точки центральной линии и локальных
             # координат отверстия
-            target = obstacle_to_coords(centrals[current_obstacle[n]['wall_num']]['points'][-1],
+            target = obstacle_to_coords(centrals[current_obstacle[n]['wall_num']]['points'],
                                         walls[current_obstacle[n]['wall_num']]['holes'][
                                             current_obstacle[n]['hole_num']])
             wall_vect = get_wall_norm_vect(centrals[current_obstacle[n]['wall_num']]['points'])
@@ -329,14 +352,23 @@ def set_target(n, telemetry):
                 for key in target.keys():
                     target[key] += wall_vect[key] * SPEED
                 target['mode'] = 'vel'
+
+                # for key in target.keys():
+                #     target[key] -= wall_vect[key] * TARGET_POINT_BIAS * 2
+                # target['mode'] = 'pos'
+                target['tag'] = 'fly through'
             else:
                 target['mode'] = 'pos'
+                target['tag'] = 'approaching'
         # В противном случае сначала надо достигнуть точки центральной линии по пути
         else:
             target = centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num']]
             target['mode'] = 'pos'
+            target['tag'] = 'turn'
     except IndexError:
         target = None
+    if current_obstacle[n]['landing'] and telemetry.pose.position.y < 70:
+        print(f'BUG {n}:', target)
     return target
 
 
@@ -373,6 +405,10 @@ def offboard_loop():  # Запускается один раз
             if len(centrals) == 0 or centrals[-1]['name'] != central['name']:
                 centrals.append(central)
             if wall is not None and len(walls) == 0 or walls[-1]['name'] != wall['name']:
+                holes = []
+                for hole in wall['holes']:
+                    holes.append(obstacle_to_coords(central['points'], hole))
+                print(f'NEW WALL {wall["name"]} HOLES', holes)
                 # Построение плоскости
                 p1 = dict_to_point(central['points'][-1])
                 p2 = dict_to_point(central['points'][-1])
@@ -389,12 +425,15 @@ def offboard_loop():  # Запускается один раз
                 p1.add_point(norm_vect)
                 p2.add_point(norm_vect)
                 p3.add_point(norm_vect)
+                print('P1', p1.get_dict())
+                print('P2', p2.get_dict())
+                print('P3', p3.get_dict())
                 wall['surface'] = Surface(p1, p2, p3)
                 wall['surface_sign'] = sign(wall['surface'].substitute_point(dict_to_point(central['points'][-1])))
                 # TODO: Построение прямой для каждой точки
                 for i in range(len(wall['holes'])):
-                    p1 = dict_to_point(obstacle_to_coords(central['points'][-1], wall['holes'][i]))
-                    p2 = dict_to_point(obstacle_to_coords(central['points'][-1], wall['holes'][i]))
+                    p1 = dict_to_point(obstacle_to_coords(central['points'], wall['holes'][i]))
+                    p2 = dict_to_point(obstacle_to_coords(central['points'], wall['holes'][i]))
                     p2.add_point(dict_to_point(get_wall_norm_vect(central['points'])))
                     wall['holes'][i]['line'] = Line(p1, p2)
                 walls.append(wall)
@@ -440,7 +479,7 @@ def offboard_loop():  # Запускается один раз
             except IndexError:
                 target = None
 
-            print(f'TARGET of {n}:', target)
+            #print(f'TARGET of {n}:', target)
             # if target is not None:
             mc_race(pt, n, dt, target)
             pub_pt[n].publish(pt)
@@ -451,13 +490,12 @@ def offboard_loop():  # Запускается один раз
 if __name__ == '__main__':
     rospy.init_node(node_name)
     rospy.loginfo(node_name + " land_zoneed")
-
+    if len(sys.argv) > 1:
+        instances_num = int(sys.argv[1])
     subscribe_on_topics()
 
     rospy.on_shutdown(on_shutdown_cb)
 
-    if len(sys.argv) > 1:
-        instances_num = int(sys.argv[1])
 
 try:
     offboard_loop()
