@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 # coding=utf8
 
+# TODO:
+# 1. Запилить посадку
+# 2. Масштабировать алгоритм на несколько дронов
+# 3. Оптимизировать проверку пролёта через препятствие посредством уравнения плоскости
+# 4. Оптимизировать взлёт
+
 import rospy
 import time
 import sys
@@ -18,15 +24,18 @@ from mavros_msgs.srv import SetMode, CommandBool, CommandVtolTransition, Command
 instances_num = 6  # количество аппаратов
 freq = 20  # Герц, частота посылки управляющих команд аппарату
 node_name = "offboard_node"
-data = {}  # Словарь с топиками дронов. Ключ - номер дрона от 1 до n. Значением является некий объект через который можно обращаться к топикам посредством data[n].get('topic_name')
+# Словарь с топиками дронов. Ключ - номер дрона от 1 до n. Значением является некий объект через который можно
+# обращаться к топикам посредством data[n].get('topic_name')
+data = {}
 current_track_data = {}
 centrals = []
 walls = []
 
 current_obstacle = {}  # Словарь с текущими препятствиями для отдельных аппаратов
+lz = {}
 
 EPS = 0.22
-
+DELAY_BETWEEN_DRONES = 2
 
 ## Вспомогательные функции
 
@@ -162,13 +171,13 @@ def set_vel(pt, vx, vy, vz):
 
 
 def mc_takeoff(pt, n, dt):
-  if dt<10:
-    #скорость вверх
-    set_vel(pt, 0, 0, 4)
+    if dt < 15:
+        # скорость вверх
+        set_vel(pt, 0, 0, 4)
 
-    #армимся и взлетаем с заданной скоростью
-    if dt>5:
-      arming(n, True)
+        # армимся и взлетаем с заданной скоростью
+        if dt > 5:
+            arming(n, True)
 
 
 def mc_race(pt, n, dt, target):  # Повторяется с частотой freq
@@ -179,14 +188,54 @@ def mc_race(pt, n, dt, target):  # Повторяется с частотой fr
         set_vel(pt, 0, 0, 1)
 
     # летим в точку target
-    if dt > 15:
-        print('GO GO GYRO ZEPPELY')
+    if dt > 15 + (n - 1) * DELAY_BETWEEN_DRONES:
+        #print(f'{n} is departing')
+        #print('GO GO GYRO ZEPPELY')
         set_pos(pt, target['x'], target['y'], target['z'])
+
+
+def get_lz(n):
+    print(f'New LZ for {n}')
+    # # Точка отчёта - последняя точка последней центральной линии
+    # land_zone = centrals[-1]['points'][-1]
+    # norm_vect = get_wall_norm_vect(centrals[-1]['points'])  # Вектор в глухую стену
+    # # Сдвигаем точку до другого края посадочной площадки
+    # land_zone['x'] -= norm_vect['x'] * 18.5
+    # land_zone['y'] -= norm_vect['y'] * 18.5
+    # # Поворачиваем вектор на 90 градусов влево
+    # swp = norm_vect['x']
+    # norm_vect['x'] =  norm_vect['y'] * (-1)
+    # norm_vect['y'] = swp
+    # # Сдвигаемся в левый нижний угол посадочной площадки
+    # land_zone['x'] += norm_vect['x'] * 8.5
+    # land_zone['y'] += norm_vect['y'] * 8.5
+    # lz_num = len(lz)  # Номер посадочного места
+    # norm_vect = get_wall_norm_vect(centrals[-1]['points'])
+    # # Отсчитываем посадочное место в сторону глухой стены
+    # land_zone['x'] += norm_vect['x'] * (lz_num // 8)
+    # # Поворачиваем вектор на 90 градусов вправо
+    # swp = norm_vect['x']
+    # norm_vect['x'] = norm_vect['y']
+    # norm_vect['y'] = swp * (-1)
+    # # Отсчитываем посадочное место вправо
+    # land_zone['y'] += norm_vect['y'] * (lz_num % 8)
+    # land_zone['z'] = 1
+    land_zone = {'x': 120, 'y': 120, 'z': 5}
+    return land_zone
 
 def set_target(n, telemetry):
     target = {'x': 0, 'y': 0, 'z': 0}
+    #if centrals[current_obstacle[n]['wall_num']]['name'] == '|':
+    #    current_obstacle[n]['landing'] = True
+
+    # Если дрон пролетел последнее препятствие
+    if current_obstacle[n]['wall_num'] >= len(walls):
+        if n not in lz.keys():
+            lz[n] = get_lz(n)
+        target = lz[n]
+        print(f'{n} got LZ at', target)
     # Если точка последняя, значит надо лететь в отверстие в стене
-    if current_obstacle[n]['point_num'] == len(centrals[current_obstacle[n]['wall_num']]['points']) - 1:
+    elif current_obstacle[n]['point_num'] == len(centrals[current_obstacle[n]['wall_num']]['points']) - 1:
         # Если отверстие не назначено, то назначить случайное
         if 'hole_num' not in current_obstacle[n].keys():
             current_obstacle[n]['hole_num'] = random.randint(0, len(
@@ -206,7 +255,7 @@ def set_target(n, telemetry):
     return target
 
 
-def offboard_loop():  # Запускается один раз TODO: Почистить всю дрисню
+def offboard_loop():  # Запускается один раз
     pub_pt = {}
     # создаем топики, для публикации управляющих значений
     for n in range(1, instances_num + 1):
@@ -218,11 +267,11 @@ def offboard_loop():  # Запускается один раз TODO: Почис�
 
     t0 = time.time()
 
-
     for n in range(1, instances_num + 1):
         current_obstacle[n] = {}
         current_obstacle[n]['wall_num'] = 0
         current_obstacle[n]['point_num'] = 1
+        current_obstacle[n]['landing'] = False
 
     # цикл управления
     rate = rospy.Rate(freq)
@@ -233,17 +282,21 @@ def offboard_loop():  # Запускается один раз TODO: Почис�
         if central is not None and wall is not None:
             central = to_points_list(str(central.data))
             wall = to_holes_list(str(wall.data))
-            #print('CENTRAL', central)
-            #print('WALLS', wall)
+            # print('CENTRAL', central)
+            # print('WALLS', wall)
             if len(centrals) == 0 or centrals[-1]['name'] != central['name']:
                 centrals.append(central)
-            if len(walls) == 0 or walls[-1]['name'] != wall['name']:
+            if wall is not None and len(walls) == 0 or walls[-1]['name'] != wall['name']:
                 walls.append(wall)
         else:
             continue
         # управляем каждым аппаратом централизованно
         for n in range(1, instances_num + 1):
             # В ЭТОМ ЦИКЛЕ МЫ БУДЕМ ПОЛУЧАТЬ ДАННЫЕ О ТРАССЕ И ЗАДАВАТЬ ПОЛЁТНЫЕ ЦЕЛИ
+            pt = PositionTarget()  # Объект, посредством которого можно задать желаемое положение дрона и желаемые вектора скорости
+            # см. также описание mavlink сообщения https://mavlink.io/en/messages/common.html#SET_POSITION_TARGET_LOCAL_NED
+            pt.coordinate_frame = pt.FRAME_LOCAL_NED
+
             set_mode(n, "OFFBOARD")  # Переключение в режим полёта по программе
 
             telemetry = data[n].get('local_position/pose')  # Получение текущих координат дрона
@@ -261,16 +314,17 @@ def offboard_loop():  # Запускается один раз TODO: Почис�
                     current_obstacle[n]['point_num'] += 1
                 target = set_target(n, telemetry)
 
-            print('TARGET', target)
+            #print('TARGET', target)
             mc_race(pt, n, dt, target)
 
             pub_pt[n].publish(pt)
 
         rate.sleep()
 
+
 if __name__ == '__main__':
     rospy.init_node(node_name)
-    rospy.loginfo(node_name + " started")
+    rospy.loginfo(node_name + " land_zoneed")
 
     subscribe_on_topics()
 
