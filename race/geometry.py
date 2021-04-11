@@ -42,6 +42,11 @@ class Point:
         self.y += other.get_y()
         self.z += other.get_z()
 
+    def mul_vector(self, k):
+        self.x *= k
+        self.y *= k
+        self.z *= k
+
     def normalize_vector(self):
         ln = self.vector_length()
         self.x /= ln
@@ -88,6 +93,20 @@ class Line:
         tmp2.sub_point(self.p0)
         sq = tmp1.get_cp_len(tmp2)
         return sq / self.p1.distance(self.p0)
+
+    def pr_point(self, other_point):
+        tmp1 = Point(self.p1.x, self.p1.y, self.p1.z)
+        tmp2 = Point(other_point.x, other_point.y, other_point.z)
+        tmp1.sub_point(self.p0)
+        tmp2.sub_point(self.p0)
+        nv = tmp1.get_cp(tmp2)
+        nvv = tmp1.get_cp(nv)
+        nvv.normalize_vector()
+        k = self.get_point_dist(other_point)
+        nvv.mul_vector(k)
+        ans = Point(other_point.x, other_point.y, other_point.z)
+        ans.add_point(nvv)
+        return ans
 
 
 class Surface:
