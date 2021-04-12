@@ -38,7 +38,7 @@ walls = []
 current_obstacle = {}  # Словарь с текущими препятствиями для отдельных аппаратов
 lz = {}  # Словарь с местами "посадки" для дронов, пролетевших трассу
 
-TURN_EPS = 3  # Окрестность, при вхождении в которую поворот считается пройденным
+TURN_EPS = 2  # Окрестность, при вхождении в которую поворот считается пройденным
 LINE_EPS = 0.4  # Окрестность линии, при вхождению в которую режим управления переключается на векторный
 DELAY_BETWEEN_DRONES = 2  # Задержка между вылетами дронов в секундах
 TARGET_POINT_BIAS = -0.6  # Величина смещения точки цели полёта
@@ -392,7 +392,10 @@ def set_target(n, telemetry):
             target['mode'] = 'pos'
             target['tag'] = 'turn'
     except IndexError:
-        target = None
+        target = {'x': 0, 'y': 0, 'z': 0, 'mode': 'vel'}
+        # target = {'x': telemetry.pose.position.x, 'y': telemetry.pose.position.y, 'z': telemetry.pose.position.z,
+        #           'mode': 'pos'}
+        # target = None
     # if current_obstacle[n]['landing'] and telemetry.pose.position.y < 70:
     #     print(f'BUG {n}:', target)
     return target
@@ -470,14 +473,14 @@ def offboard_loop():  # Запускается один раз
             pt.coordinate_frame = pt.FRAME_LOCAL_NED
 
             set_mode(n, "OFFBOARD")  # Переключение в режим полёта по программе
-
-            telemetry = data[n].get('local_position/pose')  # Получение текущих координат дрона
-            if telemetry is None:
-                continue
-
-            target = set_target(n, telemetry)
-            pos = Point(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z)
             try:
+                telemetry = data[n].get('local_position/pose')  # Получение текущих координат дрона
+                if telemetry is None:
+                    raise IndexError
+
+                target = set_target(n, telemetry)
+                pos = Point(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z)
+
                 if current_obstacle[n]['landing']:  # Если назначена посадка
                     pass
                 # Если пересечена плоскость стены
@@ -498,7 +501,11 @@ def offboard_loop():  # Запускается один раз
                     current_obstacle[n]['point_num'] += 1
                     target = set_target(n, telemetry)
             except IndexError:
-                target = None
+                target = {'x': 0, 'y': 0, 'z': 0, 'mode': 'vel'}
+                # target = {'x': telemetry.pose.position.x, 'y': telemetry.pose.position.y,
+                #           'z': telemetry.pose.position.z,
+                #           'mode': 'pos'}
+                # target = None
 
             print(f'TARGET of {n}:', target)
             if target is not None:
