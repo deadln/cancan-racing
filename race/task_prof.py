@@ -1,12 +1,6 @@
 #!/usr/bin/env python3
 # coding=utf8
 
-# TODO:
-# 1. Запилить посадку
-# 2. Масштабировать алгоритм на несколько дронов
-# 3. Оптимизировать проверку пролёта через препятствие посредством уравнения плоскости
-# 4. Оптимизировать взлёт
-
 import rospy
 import time
 import sys
@@ -39,7 +33,7 @@ current_obstacle = {}  # Словарь с текущими препятстви
 lz = {}  # Словарь с местами "посадки" для дронов, пролетевших трассу
 
 TURN_EPS = 1.5  # Окрестность, при вхождении в которую поворот считается пройденным
-LINE_EPS = 0.4  # Окрестность линии, при вхождению в которую режим управления переключается на векторный
+LINE_EPS = 0.4  # Окрестность линии, при вхождению в которую включается управление скоростями
 DELAY_BETWEEN_DRONES = 2  # Задержка между вылетами дронов в секундах
 TARGET_POINT_BIAS = -0.6  # Величина смещения точки цели полёта
 TARGET_SURFACE_BIAS = 0.6  # Величина смещения плоскости стены
@@ -48,9 +42,11 @@ SPEED = 3  # Скорость сближения с отверстием
 
 ## Вспомогательные функции
 
+# Функция для определения аномальной телеметрии
 def is_anomaly(telemetry):
     return not (-20 < telemetry.pose.position.x < 140 and -20 < telemetry.pose.position.y < 140 and \
-         0 < telemetry.pose.position.z < 21)
+                0 < telemetry.pose.position.z < 21)
+
 
 # Функция знака
 def sign(x):
@@ -89,8 +85,9 @@ def dict_to_point(voc):
     return Point(voc['x'], voc['y'], voc['z'])
 
 
-# Получение центральной точки препятствия в координатах симулятора TODO: ИСПРАВИТЬ!!!
+# Получение центральной точки препятствия в координатах симулятора
 def obstacle_to_coords(central, hole):  # Координаты точки центральной линии, параметры отверстия
+    # Получение точек на стене
     p1 = dict(central[-1])
     p2 = dict(central[-1])
     p2['z'] += 1
@@ -99,12 +96,14 @@ def obstacle_to_coords(central, hole):  # Координаты точки цен
     norm_vect = rotate_vect_xy(norm_vect)
     for key in p3.keys():
         p3[key] += norm_vect[key]
+    # Получение векторов на стене для рассчёта абсолютных координат отверстия
     vx = dict(p3)
     for key in vx.keys():
         vx[key] -= p1[key]
     vy = dict(p2)
     for key in vy.keys():
         vy[key] -= p1[key]
+    # Вычисление абсолютных координат отверстия
     res = dict(p1)
     for key in res.keys():
         res[key] += vx[key] * hole['x']
@@ -142,6 +141,7 @@ def get_distance(x1, y1, z1, x2, y2, z2):
     return math.sqrt(math.pow(x1 - x2, 2) + math.pow(y1 - y2, 2) + math.pow(z1 - z2, 2))
 
 
+# Получить расстояние до линии, которая проецируется из выбранного дроном отверстия перпендикулярно стене
 def get_current_line_distance(n, telemetry):
     return walls[current_obstacle[n]['wall_num']]['holes'][current_obstacle[n]['hole_num']]['line'].get_point_dist(
         Point(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z))
@@ -242,6 +242,7 @@ def set_vel(pt, vx, vy, vz):
     pt.velocity.z = vz
 
 
+# Получить вектор скорости для полёта из точки p1 в точку p2 со скоростью speed
 def get_speed_vect(p1, p2, speed):
     vect = dict(p2)
     vect_len = get_distance(p1['x'], p1['y'], p1['z'], p2['x'], p2['y'], p2['z'])
@@ -287,12 +288,13 @@ def mc_race(pt, n, dt, target):  # Повторяется с частотой fr
         # скорость вверх
         set_vel(pt, 0, 0, 1)
 
-    # летим в точку target
+    # Летим в точку target
     if target['mode'] == 'pos':
         if dt > 15 + (n - 1) * DELAY_BETWEEN_DRONES:
             set_pos(pt, target['x'], target['y'], target['z'])
         elif dt > 15:
             set_vel(pt, 0, 0, 0.1)
+    # Или устанавливаем вектор скорости target
     elif target['mode'] == 'vel':
         set_vel(pt, target['x'], target['y'], target['z'])
 
@@ -325,7 +327,6 @@ def get_lz(n):
     land_zone['x'] += norm_vect['x'] * (lz_num % 8)
     land_zone['y'] += norm_vect['y'] * (lz_num % 8)
     land_zone['z'] = 1
-    # land_zone = {'x': 120, 'y': 120, 'z': 5}
     return land_zone
 
 
@@ -333,19 +334,14 @@ def get_lz(n):
 def set_target(n, telemetry):
     target = {'x': 0, 'y': 0, 'z': 0}
     try:
-        if centrals[current_obstacle[n]['wall_num']]['name'] == '|': #and walls[current_obstacle[n]['wall_num']][
-            # 'surface_sign'] != sign(walls[current_obstacle[n]['wall_num']]['surface'].substitute_point(pos)):
-            # print(f'{n} is now landing')
+        # Признак того, что трасса пройдена, и нужно снижаться на посадку
+        if centrals[current_obstacle[n]['wall_num']]['name'] == '|':
             current_obstacle[n]['landing'] = True
 
-        # Если дрон пролетел последнее препятствие
+        # Если дрон должен заходить на посадку
         if current_obstacle[n]['landing']:
             if n not in lz.keys():
                 print(f'DRONE {n} IS LANDING')
-                print('CURRENT WALL NUM:', current_obstacle[n]['wall_num'])
-                print('CURRENT WALL COUNT', len(walls))
-                if telemetry.pose.position.y < 70:
-                    print(f'BUG {n}:', current_obstacle[n]['wall_num'])
                 lz[n] = get_lz(n)
             target = lz[n]
             target['mode'] = 'pos'
@@ -360,32 +356,22 @@ def set_target(n, telemetry):
             target = obstacle_to_coords(centrals[current_obstacle[n]['wall_num']]['points'],
                                         walls[current_obstacle[n]['wall_num']]['holes'][
                                             current_obstacle[n]['hole_num']])
+            # Смещаем цель полёта относительно центра отверстия немного назад
             wall_vect = get_wall_norm_vect(centrals[current_obstacle[n]['wall_num']]['points'])
             for key in target.keys():
                 target[key] += wall_vect[key] * TARGET_POINT_BIAS
-            # Если мы летим к точке, и поравняемся с прямой, проецируемой этой точкой
+            # Если мы летим к точке, и поравняемся с прямой, проецируемой этой точкой, а также достаточно близки к стене
             if get_current_line_distance(n, telemetry) < LINE_EPS and \
                     walls[current_obstacle[n]['wall_num']]['surface'].get_point_dist(
                         Point(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z)) < 5:
-
-                # print(f'{n}: FULL THROTTLE')
+                # Смещаем цель полёта вперёд, за стену
                 for key in target.keys():
                     target[key] -= wall_vect[key] * TARGET_POINT_BIAS * 2
+                # Назначаем полётной целью вектор скорости, направленный в точку за стеной
                 target = get_speed_vect({'x': telemetry.pose.position.x, 'y': telemetry.pose.position.y,
                                          'z': telemetry.pose.position.z}, target, SPEED)
                 target['mode'] = 'vel'
-
-                # target = wall_vect
-                # for key in target.keys():
-                #     target[key] += wall_vect[key] * SPEED
-                # target['z'] = -0.1
-                # target['mode'] = 'vel'
-
-                # for key in target.keys():
-                #     target[key] -= wall_vect[key] * TARGET_POINT_BIAS * 2
-                # target['z'] -= 0.3
-                # target['mode'] = 'pos'
-                # target['tag'] = 'fly through'
+            # Если мы далеко от отверстия, то аккуратно приближаемся
             else:
                 target['mode'] = 'pos'
                 target['tag'] = 'approaching'
@@ -394,22 +380,21 @@ def set_target(n, telemetry):
             target = centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num']]
             target['mode'] = 'pos'
             target['tag'] = 'turn'
+    # Исключение, которое срабатывает когда дрон пролетел отверстие, а следующая стена ещё не была опубликована
     except IndexError:
-        target = {'x': 0, 'y': 0, 'z': 0, 'mode': 'vel'}
-        # target = {'x': telemetry.pose.position.x, 'y': telemetry.pose.position.y, 'z': telemetry.pose.position.z,
-        #           'mode': 'pos'}
-        # target = None
-    # if current_obstacle[n]['landing'] and telemetry.pose.position.y < 70:
-    #     print(f'BUG {n}:', target)
+        print(f'{n}: INDEX ERROR')
+        target = {'x': 0, 'y': 0, 'z': 0, 'mode': 'vel'}  # Мера для стабилизации дрона
     return target
 
 
 # Функция цикла автономного полёта
 def offboard_loop():  # Запускается один раз
+    # создаем топики, для публикации управляющих значений, а также полётных целей (для дебага)
     pub_pt = {}
-    # создаем топики, для публикации управляющих значений
+    targets = {}
     for n in range(1, instances_num + 1):
         pub_pt[n] = rospy.Publisher(f"/mavros{n}/setpoint_raw/local", PositionTarget, queue_size=10)
+        targets[n] = rospy.Publisher(f"/mavros{n}/target", String, queue_size=10)
 
     pt = PositionTarget()  # Объект, посредством которого можно задать желаемое положение дрона и желаемые вектора скорости
     # см. также описание mavlink сообщения https://mavlink.io/en/messages/common.html#SET_POSITION_TARGET_LOCAL_NED
@@ -417,17 +402,19 @@ def offboard_loop():  # Запускается один раз
 
     t0 = time.time()
 
+    # Инициализируем словарь с данными о назначенных препятствиях для каждого дрона
     for n in range(1, instances_num + 1):
         current_obstacle[n] = {}
-        current_obstacle[n]['wall_num'] = 0
-        current_obstacle[n]['point_num'] = 1
-        current_obstacle[n]['hole_num'] = -1
-        current_obstacle[n]['landing'] = False
+        current_obstacle[n]['wall_num'] = 0  # Номер текущей стены
+        current_obstacle[n]['point_num'] = 1  # Номер текущей точки
+        current_obstacle[n]['hole_num'] = -1  # Номер назначенного отверстия
+        current_obstacle[n]['landing'] = False  # Признак того что нужно заходить на посадку
 
     # цикл управления
     rate = rospy.Rate(freq)
     while not rospy.is_shutdown():
         dt = time.time() - t0
+        # Чтение топика трассы
         central = current_track_data.get('/path_generator/central')
         wall = current_track_data.get('/path_generator/walls')
         # Обновление списков стен и центральных линий
@@ -442,7 +429,7 @@ def offboard_loop():  # Запускается один раз
                 holes = []
                 for hole in wall['holes']:
                     holes.append(obstacle_to_coords(central['points'], hole))
-                # Построение плоскости
+                # Нахождение трёх точек для плоскости стены
                 p1 = dict_to_point(central['points'][-1])
                 p2 = dict_to_point(central['points'][-1])
                 p2.add_point(Point(0, 0, 1))
@@ -458,9 +445,10 @@ def offboard_loop():  # Запускается один раз
                 p1.add_point(norm_vect)
                 p2.add_point(norm_vect)
                 p3.add_point(norm_vect)
+                # Создание плоскости и назначение признака того что дрон преодолел плоскость
                 wall['surface'] = Surface(p1, p2, p3)
                 wall['surface_sign'] = sign(wall['surface'].substitute_point(dict_to_point(central['points'][-1])))
-                # TODO: Построение прямой для каждой точки
+                # Построение прямой, перпендикулярной стене, для каждой точки центра отверстия
                 for i in range(len(wall['holes'])):
                     p1 = dict_to_point(obstacle_to_coords(central['points'], wall['holes'][i]))
                     p2 = dict_to_point(obstacle_to_coords(central['points'], wall['holes'][i]))
@@ -480,6 +468,7 @@ def offboard_loop():  # Запускается один раз
             set_mode(n, "OFFBOARD")  # Переключение в режим полёта по программе
             try:
                 telemetry = data[n].get('local_position/pose')  # Получение текущих координат дрона
+                # Обнаружение аномальной телеметрии
                 if telemetry is None:
                     print(f'{n}: TELEMETRY IS MISSING')
                     raise IndexError
@@ -489,18 +478,21 @@ def offboard_loop():  # Запускается один раз
                 target = set_target(n, telemetry)
                 pos = Point(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z)
 
-                if current_obstacle[n]['landing']:  # Если назначена посадка
+                # Если назначена посадка
+                if current_obstacle[n]['landing']:
                     pass
-                # Если пересечена плоскость стены
+                # Если пересечена плоскость стены (знак при подстановке точки в уравнение плоскости не совпадает со
+                # знаком точки, подставленной перед стеной)
                 elif current_obstacle[n]['point_num'] == len(
                         centrals[current_obstacle[n]['wall_num']]['points']) - 1 and \
                         walls[current_obstacle[n]['wall_num']]['surface_sign'] != sign(
                     walls[current_obstacle[n]['wall_num']]['surface'].substitute_point(pos)):
                     print(f'{n}:NEXT WALL')
+                    # Инскремент счётчика стены и сброс номеров точек и отверстий
                     current_obstacle[n]['wall_num'] += 1
                     current_obstacle[n]['point_num'] = 1
                     current_obstacle[n]['hole_num'] = -1
-                    target = set_target(n, telemetry)
+                    target = set_target(n, telemetry)  # Назначение новой стены
                 # Если достигнута окрестность центра поворота
                 elif current_obstacle[n]['point_num'] < len(centrals[current_obstacle[n]['wall_num']]['points']) - 1 and \
                         get_distance(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z,
@@ -508,19 +500,21 @@ def offboard_loop():  # Запускается один раз
                     print(f'{n}:NEXT POINT')
                     current_obstacle[n]['point_num'] += 1
                     target = set_target(n, telemetry)
+            # Исключение, которое срабатывает когда дрон пролетел отверстие, а следующая стена ещё не была опубликована
             except IndexError:
+                print(f'{n}: INDEX ERROR')
+                # Меры для стабилизации дрона
                 if telemetry is None:
                     target = {'x': 0, 'y': 0, 'z': 0, 'mode': 'vel'}
                 else:
                     target = {'x': telemetry.pose.position.x, 'y': telemetry.pose.position.y,
                               'z': telemetry.pose.position.z,
                               'mode': 'pos'}
-                # target = None
-
-            #print(f'TARGET of {n}:', target)
             if target is not None:
+                # Отправка полётной цели и публикация данных в топиках
                 mc_race(pt, n, dt, target)
                 pub_pt[n].publish(pt)
+                targets[n].publish(str(target))
 
         rate.sleep()
 

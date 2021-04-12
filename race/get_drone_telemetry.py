@@ -49,7 +49,6 @@ rospy.init_node('watcher')
 subscribe_on_topics()
 
 while True:
-
     inp = int(input('Enter copter number '))
     telemetry = data[inp].get('local_position/pose')
     print(telemetry)
