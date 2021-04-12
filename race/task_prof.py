@@ -38,7 +38,7 @@ walls = []
 current_obstacle = {}  # Словарь с текущими препятствиями для отдельных аппаратов
 lz = {}  # Словарь с местами "посадки" для дронов, пролетевших трассу
 
-TURN_EPS = 2  # Окрестность, при вхождении в которую поворот считается пройденным
+TURN_EPS = 1.5  # Окрестность, при вхождении в которую поворот считается пройденным
 LINE_EPS = 0.4  # Окрестность линии, при вхождению в которую режим управления переключается на векторный
 DELAY_BETWEEN_DRONES = 2  # Задержка между вылетами дронов в секундах
 TARGET_POINT_BIAS = -0.6  # Величина смещения точки цели полёта
@@ -48,6 +48,9 @@ SPEED = 3  # Скорость сближения с отверстием
 
 ## Вспомогательные функции
 
+def is_anomaly(telemetry):
+    return not (-20 < telemetry.pose.position.x < 140 and -20 < telemetry.pose.position.y < 140 and \
+         0 < telemetry.pose.position.z < 21)
 
 # Функция знака
 def sign(x):
@@ -365,7 +368,7 @@ def set_target(n, telemetry):
                     walls[current_obstacle[n]['wall_num']]['surface'].get_point_dist(
                         Point(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z)) < 5:
 
-                print(f'{n}: FULL THROTTLE')
+                # print(f'{n}: FULL THROTTLE')
                 for key in target.keys():
                     target[key] -= wall_vect[key] * TARGET_POINT_BIAS * 2
                 target = get_speed_vect({'x': telemetry.pose.position.x, 'y': telemetry.pose.position.y,
@@ -432,6 +435,8 @@ def offboard_loop():  # Запускается один раз
             central = to_points_list(str(central.data))
             wall = to_holes_list(str(wall.data))
             if len(centrals) == 0 or centrals[-1]['name'] != central['name']:
+                if central['name'] == '|':
+                    print('THE FINAL WALL HAS BEEN APPEARED')
                 centrals.append(central)
             if wall is not None and len(walls) == 0 or walls[-1]['name'] != wall['name']:
                 holes = []
@@ -476,7 +481,10 @@ def offboard_loop():  # Запускается один раз
             try:
                 telemetry = data[n].get('local_position/pose')  # Получение текущих координат дрона
                 if telemetry is None:
+                    print(f'{n}: TELEMETRY IS MISSING')
                     raise IndexError
+                if is_anomaly(telemetry):
+                    print(f'{n}: TELEMETRY IS ABNORMAL')
 
                 target = set_target(n, telemetry)
                 pos = Point(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z)
@@ -501,13 +509,15 @@ def offboard_loop():  # Запускается один раз
                     current_obstacle[n]['point_num'] += 1
                     target = set_target(n, telemetry)
             except IndexError:
-                target = {'x': 0, 'y': 0, 'z': 0, 'mode': 'vel'}
-                # target = {'x': telemetry.pose.position.x, 'y': telemetry.pose.position.y,
-                #           'z': telemetry.pose.position.z,
-                #           'mode': 'pos'}
+                if telemetry is None:
+                    target = {'x': 0, 'y': 0, 'z': 0, 'mode': 'vel'}
+                else:
+                    target = {'x': telemetry.pose.position.x, 'y': telemetry.pose.position.y,
+                              'z': telemetry.pose.position.z,
+                              'mode': 'pos'}
                 # target = None
 
-            print(f'TARGET of {n}:', target)
+            #print(f'TARGET of {n}:', target)
             if target is not None:
                 mc_race(pt, n, dt, target)
                 pub_pt[n].publish(pt)
