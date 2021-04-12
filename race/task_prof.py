@@ -38,11 +38,11 @@ walls = []
 current_obstacle = {}  # Словарь с текущими препятствиями для отдельных аппаратов
 lz = {}  # Словарь с местами "посадки" для дронов, пролетевших трассу
 
-TURN_EPS = 2  # Окрестность, при вхождении в которую поворот считается пройденным
-LINE_EPS = 0.25  # Окрестность линии, при вхождению в которую режим управления переключается на векторный
+TURN_EPS = 3  # Окрестность, при вхождении в которую поворот считается пройденным
+LINE_EPS = 0.4  # Окрестность линии, при вхождению в которую режим управления переключается на векторный
 DELAY_BETWEEN_DRONES = 2  # Задержка между вылетами дронов в секундах
-TARGET_POINT_BIAS = -0.5  # Величина смещения точки цели полёта
-TARGET_SURFACE_BIAS = 0.3  # Величина смещения плоскости стены
+TARGET_POINT_BIAS = -0.6  # Величина смещения точки цели полёта
+TARGET_SURFACE_BIAS = 0.6  # Величина смещения плоскости стены
 SPEED = 3  # Скорость сближения с отверстием
 
 
@@ -88,8 +88,6 @@ def dict_to_point(voc):
 
 # Получение центральной точки препятствия в координатах симулятора TODO: ИСПРАВИТЬ!!!
 def obstacle_to_coords(central, hole):  # Координаты точки центральной линии, параметры отверстия
-    #print('CENTRAL',central)
-    #central_point = dict(central['points'][-1])
     p1 = dict(central[-1])
     p2 = dict(central[-1])
     p2['z'] += 1
@@ -241,6 +239,16 @@ def set_vel(pt, vx, vy, vz):
     pt.velocity.z = vz
 
 
+def get_speed_vect(p1, p2, speed):
+    vect = dict(p2)
+    vect_len = get_distance(p1['x'], p1['y'], p1['z'], p2['x'], p2['y'], p2['z'])
+    for key in vect.keys():
+        vect[key] -= p1[key]
+        vect[key] /= vect_len
+        vect[key] *= speed
+    return vect
+
+
 # Взлёт
 def mc_takeoff(pt, n, dt):
     if dt < 15:
@@ -322,13 +330,19 @@ def get_lz(n):
 def set_target(n, telemetry):
     target = {'x': 0, 'y': 0, 'z': 0}
     try:
-        if centrals[current_obstacle[n]['wall_num']]['name'] == '|':
-            #print(f'{n} is now landing')
+        if centrals[current_obstacle[n]['wall_num']]['name'] == '|': #and walls[current_obstacle[n]['wall_num']][
+            # 'surface_sign'] != sign(walls[current_obstacle[n]['wall_num']]['surface'].substitute_point(pos)):
+            # print(f'{n} is now landing')
             current_obstacle[n]['landing'] = True
 
         # Если дрон пролетел последнее препятствие
         if current_obstacle[n]['landing']:
             if n not in lz.keys():
+                print(f'DRONE {n} IS LANDING')
+                print('CURRENT WALL NUM:', current_obstacle[n]['wall_num'])
+                print('CURRENT WALL COUNT', len(walls))
+                if telemetry.pose.position.y < 70:
+                    print(f'BUG {n}:', current_obstacle[n]['wall_num'])
                 lz[n] = get_lz(n)
             target = lz[n]
             target['mode'] = 'pos'
@@ -347,16 +361,28 @@ def set_target(n, telemetry):
             for key in target.keys():
                 target[key] += wall_vect[key] * TARGET_POINT_BIAS
             # Если мы летим к точке, и поравняемся с прямой, проецируемой этой точкой
-            if get_current_line_distance(n, telemetry) < LINE_EPS:
-                target = wall_vect
+            if get_current_line_distance(n, telemetry) < LINE_EPS and \
+                    walls[current_obstacle[n]['wall_num']]['surface'].get_point_dist(
+                        Point(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z)) < 5:
+
+                print(f'{n}: FULL THROTTLE')
                 for key in target.keys():
-                    target[key] += wall_vect[key] * SPEED
+                    target[key] -= wall_vect[key] * TARGET_POINT_BIAS * 2
+                target = get_speed_vect({'x': telemetry.pose.position.x, 'y': telemetry.pose.position.y,
+                                         'z': telemetry.pose.position.z}, target, SPEED)
                 target['mode'] = 'vel'
+
+                # target = wall_vect
+                # for key in target.keys():
+                #     target[key] += wall_vect[key] * SPEED
+                # target['z'] = -0.1
+                # target['mode'] = 'vel'
 
                 # for key in target.keys():
                 #     target[key] -= wall_vect[key] * TARGET_POINT_BIAS * 2
+                # target['z'] -= 0.3
                 # target['mode'] = 'pos'
-                target['tag'] = 'fly through'
+                # target['tag'] = 'fly through'
             else:
                 target['mode'] = 'pos'
                 target['tag'] = 'approaching'
@@ -367,8 +393,8 @@ def set_target(n, telemetry):
             target['tag'] = 'turn'
     except IndexError:
         target = None
-    if current_obstacle[n]['landing'] and telemetry.pose.position.y < 70:
-        print(f'BUG {n}:', target)
+    # if current_obstacle[n]['landing'] and telemetry.pose.position.y < 70:
+    #     print(f'BUG {n}:', target)
     return target
 
 
@@ -408,7 +434,6 @@ def offboard_loop():  # Запускается один раз
                 holes = []
                 for hole in wall['holes']:
                     holes.append(obstacle_to_coords(central['points'], hole))
-                print(f'NEW WALL {wall["name"]} HOLES', holes)
                 # Построение плоскости
                 p1 = dict_to_point(central['points'][-1])
                 p2 = dict_to_point(central['points'][-1])
@@ -425,9 +450,6 @@ def offboard_loop():  # Запускается один раз
                 p1.add_point(norm_vect)
                 p2.add_point(norm_vect)
                 p3.add_point(norm_vect)
-                print('P1', p1.get_dict())
-                print('P2', p2.get_dict())
-                print('P3', p3.get_dict())
                 wall['surface'] = Surface(p1, p2, p3)
                 wall['surface_sign'] = sign(wall['surface'].substitute_point(dict_to_point(central['points'][-1])))
                 # TODO: Построение прямой для каждой точки
@@ -456,7 +478,6 @@ def offboard_loop():  # Запускается один раз
             target = set_target(n, telemetry)
             pos = Point(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z)
             try:
-                # print(get_current_line_distance(n, telemetry))
                 if current_obstacle[n]['landing']:  # Если назначена посадка
                     pass
                 # Если пересечена плоскость стены
@@ -464,7 +485,7 @@ def offboard_loop():  # Запускается один раз
                         centrals[current_obstacle[n]['wall_num']]['points']) - 1 and \
                         walls[current_obstacle[n]['wall_num']]['surface_sign'] != sign(
                     walls[current_obstacle[n]['wall_num']]['surface'].substitute_point(pos)):
-                    print('NEXT WALL')
+                    print(f'{n}:NEXT WALL')
                     current_obstacle[n]['wall_num'] += 1
                     current_obstacle[n]['point_num'] = 1
                     current_obstacle[n]['hole_num'] = -1
@@ -473,16 +494,16 @@ def offboard_loop():  # Запускается один раз
                 elif current_obstacle[n]['point_num'] < len(centrals[current_obstacle[n]['wall_num']]['points']) - 1 and \
                         get_distance(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z,
                                      target['x'], target['y'], target['z']) < TURN_EPS:
-                    print('NEXT POINT')
+                    print(f'{n}:NEXT POINT')
                     current_obstacle[n]['point_num'] += 1
                     target = set_target(n, telemetry)
             except IndexError:
                 target = None
 
-            #print(f'TARGET of {n}:', target)
-            # if target is not None:
-            mc_race(pt, n, dt, target)
-            pub_pt[n].publish(pt)
+            print(f'TARGET of {n}:', target)
+            if target is not None:
+                mc_race(pt, n, dt, target)
+                pub_pt[n].publish(pt)
 
         rate.sleep()
 
@@ -495,7 +516,6 @@ if __name__ == '__main__':
     subscribe_on_topics()
 
     rospy.on_shutdown(on_shutdown_cb)
-
 
 try:
     offboard_loop()
