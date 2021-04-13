@@ -10,7 +10,7 @@ from pathlib import Path
 from std_msgs.msg import String
 from gazebo_msgs.msg import ModelStates
 
-freq = 2
+freq = 5
 fs_num = 4
 plane_pos={}
 formations = {}
