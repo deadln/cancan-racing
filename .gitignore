@@ -5,3 +5,4 @@
 /PX4-Autopilot*
 /PX4-SITL_gazebo*
 __pycache__
+/judge/out_*
