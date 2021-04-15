@@ -121,4 +121,9 @@ git pull
 [Тестовое задание по дисциплине Командная гонка](https://github.com/acsl-mipt/drone-games/blob/main/.resources/TASK_2.md)
 
 [FAQ](https://github.com/acsl-mipt/drone-games/blob/main/.resources/FAQ.md)
+
+Список допущенных команд
+========================
+
+[Список допущенных команд](https://github.com/acsl-mipt/drone-games/blob/main/.resources/Teams.pdf)
 ================================================================
