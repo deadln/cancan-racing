@@ -31,7 +31,7 @@ SPEED_THRESHOLD = 1
 MODEL = None
 NUM = None
 MAX_SPEED = 12
-FILENAME = 'data'
+FILENAME = 'formation'
 
 # ZONE_BORDERS = [[31, -62, 52, -62],
 #                 [31, 62, 52, 62],

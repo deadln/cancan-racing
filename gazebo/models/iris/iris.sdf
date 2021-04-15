@@ -50,7 +50,26 @@
       </visual>
       <gravity>1</gravity>
       <velocity_decay/>
+      
+      <sensor name='contact' type='contact'>
+        <contact>
+          <robotNamespace/>
+          <collision>base_link_inertia_collision</collision>
+          <topic>base_link_bumper</topic>
+        </contact>
+        
+        <plugin name="gazebo_ros_bumper_controller" filename="libgazebo_ros_bumper.so">
+          <robotNamespace></robotNamespace>
+          <alwaysOn>true</alwaysOn>
+          <updateRate>10.0</updateRate>
+          <!--<bumperTopicName>base_link_bumper</bumperTopicName>-->
+          <!--<frameName>base_link</frameName>-->
+        </plugin>
+        
+      </sensor>
+      
     </link>
+    
     <joint name='/imu_joint' type='revolute'>
       <pose relative_to='base_link'>0 0 0 0 -0 0</pose>
       <parent>base_link</parent>
@@ -148,6 +167,30 @@
       </visual>
       <gravity>1</gravity>
       <velocity_decay/>
+      
+      <!--<sensor name="my_contact" type="contact">
+          <plugin filename="libcontact_plugin.so" name="my_plugin"/>
+          <contact>
+              <collision>rotor_0_collision</collision>
+          </contact>
+      </sensor>-->
+      <sensor name='contact' type='contact'>
+        <contact>
+          <robotNamespace/>
+          <collision>rotor_0_collision</collision>
+          <topic>rotor_0_bumper</topic>
+        </contact>
+        
+        <plugin name="gazebo_ros_bumper_controller" filename="libgazebo_ros_bumper.so">
+          <robotNamespace></robotNamespace>
+          <alwaysOn>true</alwaysOn>
+          <updateRate>10.0</updateRate>
+          <!--<bumperTopicName>base_link_bumper</bumperTopicName>-->
+          <!--<frameName>base_link</frameName>-->
+        </plugin>
+        
+      </sensor>
+      
     </link>
     <joint name='rotor_1_joint' type='revolute'>
       <pose relative_to='base_link'>-0.13 0.2 0.023 0 -0 0</pose>
@@ -213,6 +256,30 @@
       </visual>
       <gravity>1</gravity>
       <velocity_decay/>
+      
+      <!--<sensor name="my_contact" type="contact">
+          <plugin filename="libcontact_plugin.so" name="my_plugin"/>
+          <contact>
+              <collision>rotor_1_collision</collision>
+          </contact>
+      </sensor>-->
+      <sensor name='contact' type='contact'>
+        <contact>
+          <robotNamespace/>
+          <collision>rotor_1_collision</collision>
+          <topic>rotor_1_bumper</topic>
+        </contact>
+        
+        <plugin name="gazebo_ros_bumper_controller" filename="libgazebo_ros_bumper.so">
+          <robotNamespace></robotNamespace>
+          <alwaysOn>true</alwaysOn>
+          <updateRate>10.0</updateRate>
+          <!--<bumperTopicName>base_link_bumper</bumperTopicName>-->
+          <!--<frameName>base_link</frameName>-->
+        </plugin>
+        
+      </sensor>
+      
     </link>
     <joint name='rotor_2_joint' type='revolute'>
       <pose relative_to='base_link'>0.13 0.22 0.023 0 -0 0</pose>
@@ -278,6 +345,30 @@
       </visual>
       <gravity>1</gravity>
       <velocity_decay/>
+      
+      <!--<sensor name="my_contact" type="contact">
+          <plugin filename="libcontact_plugin.so" name="my_plugin"/>
+          <contact>
+              <collision>rotor_2_collision</collision>
+          </contact>
+      </sensor>-->
+      <sensor name='contact' type='contact'>
+        <contact>
+          <robotNamespace/>
+          <collision>rotor_2_collision</collision>
+          <topic>rotor_2_bumper</topic>
+        </contact>
+        
+        <plugin name="gazebo_ros_bumper_controller" filename="libgazebo_ros_bumper.so">
+          <robotNamespace></robotNamespace>
+          <alwaysOn>true</alwaysOn>
+          <updateRate>10.0</updateRate>
+          <!--<bumperTopicName>base_link_bumper</bumperTopicName>-->
+          <!--<frameName>base_link</frameName>-->
+        </plugin>
+        
+      </sensor>
+      
     </link>
     <joint name='rotor_3_joint' type='revolute'>
       <pose relative_to='base_link'>-0.13 -0.2 0.023 0 -0 0</pose>
@@ -343,6 +434,30 @@
       </visual>
       <gravity>1</gravity>
       <velocity_decay/>
+      
+      <!--<sensor name="my_contact" type="contact">
+          <plugin filename="libcontact_plugin.so" name="my_plugin"/>
+          <contact>
+              <collision>rotor_3_collision</collision>
+          </contact>
+      </sensor>-->
+      <sensor name='contact' type='contact'>
+        <contact>
+          <robotNamespace/>
+          <collision>rotor_3_collision</collision>
+          <topic>rotor_3_bumper</topic>
+        </contact>
+        
+        <plugin name="gazebo_ros_bumper_controller" filename="libgazebo_ros_bumper.so">
+          <robotNamespace></robotNamespace>
+          <alwaysOn>true</alwaysOn>
+          <updateRate>10.0</updateRate>
+          <!--<bumperTopicName>base_link_bumper</bumperTopicName>-->
+          <!--<frameName>base_link</frameName>-->
+        </plugin>
+        
+      </sensor>
+      
     </link>
 
     <include>

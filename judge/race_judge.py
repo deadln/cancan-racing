@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # coding=utf8
-
+import argparse
+import csv
+from pathlib import Path
 from subprocess import Popen
 from time import monotonic
 
@@ -20,6 +22,7 @@ COLLISION_DELTA_TIME = 0.5
 A, B, C = 1, 1, 1
 
 FINISH_NAME = '|'
+FILENAME = 'race'
 
 all_timer, all_time = None, 0
 collisions_amount = 0
@@ -37,6 +40,8 @@ prev_poses = {}
 counters = {}
 timers = {}
 times = []
+
+parser_args = None
 
 
 class Judge:
@@ -57,14 +62,19 @@ def main_loop():
 
         if finishing and set(wall_passes[max(wall_passes)]) == set(list(poses.keys())) and print_once:
             final_print()
+            write_all(final=True)
+            print_once = False
 
     rate.sleep()
 
 
-def final_print():
+def final_print(w=False):
     global all_time, print_once
 
-    all_time = sum(times)  # TODO FIX
+    # all_time = sum(times)  # TODO FIX
+    if all_timer is not None:
+        # noinspection PyTypeChecker
+        all_time = monotonic() - all_timer
 
     wpl = []
 
@@ -78,18 +88,19 @@ def final_print():
         pass_penalties.append(sum(range(v)))
     pass_penalties = np.array(pass_penalties)
 
-    final_score = all_time + A * collisions_amount + sum(pass_penalties)
+    final_score = all_time + A * collisions_amount + B * sum(pass_penalties)
 
-    print("TIME:            {} \n"
-          "TIMES:           {} \n"
-          "COLLISIONS:      {} \n"
-          "PASS PENALTIES:  {} \n\n"
-          "FINAL SCORE:     {}".format(all_time,
-                                       times,
-                                       collisions_amount,
-                                       pass_penalties,
-                                       final_score))
-    print_once = False
+    if not w:
+        print("TIME:            {} \n"
+              "TIMES:           {} \n"
+              "COLLISIONS:      {} \n"
+              "PASS PENALTIES:  {} \n\n"
+              "FINAL SCORE:     {}".format(all_time,
+                                           times,
+                                           collisions_amount,
+                                           pass_penalties,
+                                           final_score))
+    return all_time, times, collisions_amount, pass_penalties, final_score, window_passes
 
 
 def subscribe():
@@ -113,7 +124,10 @@ def _path_center_cb(_path_center):
 
 
 def _walls_cb(_walls):
-    global walls, wall_passes, timers
+    global walls, wall_passes, timers, all_timer
+
+    if all_timer is None:
+        all_timer = monotonic()
 
     wds = _walls.data.split()
     name = wds[1]
@@ -152,13 +166,18 @@ def _collision_cb(_contacts):
         collision_2_name = state.collision2_name.split('::')[0]
         collision_3_name = state.collision2_name.split('::')[1]
         if collision_1_name.startswith(MODEL) and (
-                collision_2_name.startswith(MODEL) or "wall" in collision_3_name or "floor_plane" in collision_3_name):
+                collision_2_name.startswith(
+                    MODEL) or "wall" in collision_3_name or "floor_plane" in collision_3_name
+                or "wall" in collision_2_name or "floor_plane" in collision_2_name
+                or "partition" in collision_2_name or "partition" in collision_3_name):
             if last_collision_time is None:
                 collisions_amount += 1
                 last_collision_time = monotonic()
+                write_all()
             elif monotonic() - last_collision_time > COLLISION_DELTA_TIME:
                 collisions_amount += 1
                 last_collision_time = monotonic()
+                write_all()
             # print(collisions_amount)
 
 
@@ -188,6 +207,7 @@ def _gz_states_cb(_states):
                             wall_passes[wall_name].append(model_name)
                             window_passes[repr(window)].append(model_name)
                             counters[model_name] += 1
+                            write_all()
                             # print(counters)
                         # else:
                         #     pass
@@ -200,6 +220,7 @@ def _gz_states_cb(_states):
 
                     if set(wall_passes[wall_name]) == set(list(poses.keys())):
                         times.append(monotonic() - timers[wall_name])
+                        write_all()
                         # print(times)
 
             # print(model_name)
@@ -260,9 +281,35 @@ def is_line_intersects_box(box_min, box_max, line_1, line_2):
 
 def on_shutdown_cb():
     final_print()
+    write_all()
+
+
+def write_all(final=False):
+    names = ['all_time', 'times', 'collisions_amount', 'pass_penalties', 'final_score', 'window_passes']
+    line = ["FINAL"] if final else []
+    for el, name in zip(final_print(w=True), names):
+        line.append(name)
+        line.append(el)
+    mode = 'a' if Path(FILENAME).is_file() else 'w'
+    with open(FILENAME, mode) as f:  # , newline=''
+        wr = csv.writer(f, quoting=csv.QUOTE_ALL)
+        wr.writerow(line)
+
+
+def arguments():
+    global parser_args
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("model", help="model name")
+    parser.add_argument("num", type=int, help="models number")
+    parser.add_argument("counter", help="counter")
+
+    parser_args = parser.parse_args()
 
 
 if __name__ == '__main__':
+    arguments()
+
     Popen(["/opt/ros/noetic/bin/rosrun", "topic_tools", "throttle", "messages",
            "/gazebo/model_states", "20", "/gazebo/model_states_throttled"], shell=False)
 
@@ -270,6 +317,13 @@ if __name__ == '__main__':
     rospy.on_shutdown(on_shutdown_cb)
 
     subscribe()
+
+    # noinspection PyUnresolvedReferences
+    FILENAME = FILENAME + str(parser_args.counter)
+    # noinspection PyUnresolvedReferences
+    MODEL = parser_args.model
+    # noinspection PyUnresolvedReferences
+    NUM = parser_args.num
 
     try:
         main_loop()
