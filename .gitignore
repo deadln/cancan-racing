@@ -6,3 +6,4 @@
 /PX4-SITL_gazebo*
 __pycache__
 /.idea
+/judge/out_*

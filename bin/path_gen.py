@@ -12,7 +12,7 @@ from gazebo_msgs.msg import ModelStates
 
 import formations_gen as fgen
 
-freq = 2
+freq = 5
 walls = {}
 
 def arguments():
