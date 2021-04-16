@@ -19,7 +19,8 @@ MODEL = 'iris'
 WALL = 'w'
 NUM = 6
 COLLISION_DELTA_TIME = 0.5
-A, B, C = 1, 1, 1
+A = 10
+B = 0.5
 
 FINISH_NAME = '|'
 FILENAME = 'race'

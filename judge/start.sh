@@ -24,7 +24,7 @@ if [ "$sim" == "formation" ]; then
  j_params="$model $num 1"
 fi
 if [ "$sim" == "race" ]; then
- j_params=" "
+ j_params="$model $num 1"
 fi
 if [[ -z "$j_params" ]]; then
   echo "invalid sim in $1"
@@ -43,7 +43,7 @@ pushd $s_dir >/dev/null
 popd >/dev/null
 
 echo "waiting topics ..."
-sleep 3
+sleep 5
 ./echo_pos.sh $num 1 >/dev/null 2>/dev/null
 
 j_log=judge.log

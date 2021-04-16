@@ -25,8 +25,16 @@ if [ "$4" != "" ]; then
   world=$4
 fi
 
-./start.sh $model $num gazebo/worlds/$world --ref_point 0,-72,0.1 $arg $@
+./start.sh $model $num gazebo/worlds/$world --pose_list places.txt --ref_point 0,-72,0.1 $arg $@
 
 if [ "$1" == "prof" ]; then
-  ./bin/formations_gen.py $model $num formation/borders.txt formation/test_fs/ --names T E C T &
+  suf=""
+  args="--names T E C T"
+
+  if [ "$world" == "formation_1.world" ]; then
+    suf="_1/$num"
+    args="--names A C P S"
+  fi
+
+  ./bin/formations_gen.py $model $num formation/borders.txt formation/test_fs${suf}/ $args &
 fi
