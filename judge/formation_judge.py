@@ -309,7 +309,7 @@ def _gz_states_cb(_states):
 
     twists = np.array(twists)
     mean_twists = twists.mean(axis=0)
-    r = Rotation.from_matrix(get_new_basis(mean_twists))
+    r = Rotation.from_matrix(get_new_basis(mean_twists).T)
     rel_mean_poses = calculate_relative_positions(poses, r)
 
     if FORMATION is not None and formation_zone:
