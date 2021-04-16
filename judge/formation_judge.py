@@ -165,7 +165,8 @@ def final_print(w=False):
 
     # if all_time == 0:
     # noinspection PyTypeChecker
-    all_time = monotonic() - all_timer
+    if all_timer is not None:
+        all_time = monotonic() - all_timer
 
     if side_timer is not None:
         # noinspection PyTypeChecker
