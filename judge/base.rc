@@ -1,0 +1,7 @@
+sim="race"
+type="mc"
+
+world="race.world"
+num=6
+
+u_cmd="python3 ../race/prof_task.py $num"
