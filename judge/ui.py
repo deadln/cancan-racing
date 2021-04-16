@@ -43,9 +43,9 @@ class MainWindow(QMainWindow):
         # noinspection PyUnresolvedReferences
         name_label = QLabel("{}".format(str(parser_args.team)))
 
-        dis_label.setStyleSheet("QLabel { background-color: white; color: black; font-size: 24px; }")
-        name_label.setStyleSheet("QLabel { background-color: white; color: black; font-size: 24px; }")
-        num_label.setStyleSheet("QLabel { background-color: white; color: black; font-size: 24px; }")
+        dis_label.setStyleSheet("QLabel { background-color: #808080; color: white; font-size: 24px; }")
+        name_label.setStyleSheet("QLabel { background-color: #808080; color: white; font-size: 24px; }")
+        num_label.setStyleSheet("QLabel { background-color: #808080; color: white; font-size: 24px; }")
 
         dis_label.setFixedHeight(LABEL_HEIGHT)
         name_label.setFixedHeight(LABEL_HEIGHT)

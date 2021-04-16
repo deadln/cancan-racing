@@ -2,6 +2,7 @@
 # coding=utf8
 import argparse
 import csv
+import time
 from pathlib import Path
 from subprocess import Popen
 from time import monotonic
@@ -112,16 +113,8 @@ def main_loop():
     rate.sleep()
 
 
-def final_print(w=False):
-    global all_time, print_once
-
-    # all_time = sum(times)
-    if all_timer is not None:
-        # noinspection PyTypeChecker
-        all_time = monotonic() - all_timer
-
+def count_pass_penalties():
     wpl = []
-
     # for v in (np.array(list(map(lambda x: np.array(x) - 1, window_passes.values())))):
     #     pass_penalties.append(sum(range(v + 1)))
     for wp in window_passes.values():
@@ -130,7 +123,18 @@ def final_print(w=False):
     pass_penalties = []
     for v in wpl:
         pass_penalties.append(sum(range(v)))
-    pass_penalties = np.array(pass_penalties)
+    return np.array(pass_penalties)
+
+
+def final_print(w=False):
+    global all_time, print_once
+
+    # all_time = sum(times)
+    if all_timer is not None:
+        # noinspection PyTypeChecker
+        all_time = monotonic() - all_timer
+
+    pass_penalties = count_pass_penalties()
 
     final_score = all_time + A * collisions_amount + B * sum(pass_penalties)
 
@@ -287,6 +291,9 @@ def _gz_states_cb(_states):
                     # print(window_passes)
 
                     if set(wall_passes[wall_name]) == set(list(poses.keys())):
+                        # noinspection PyUnresolvedReferences
+                        passes_pub.publish(str(sum(count_pass_penalties())))
+                        time.sleep(.5)
                         # noinspection PyUnresolvedReferences
                         times_pub.publish(str(monotonic() - timers[wall_name]))
                         times.append(monotonic() - timers[wall_name])
