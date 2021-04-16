@@ -1,5 +1,7 @@
 #!/bin/bash
 
+team='team'
+
 s_dir=../
 
 if [[ -z "$1" ]]; then
@@ -21,10 +23,10 @@ fi
 
 j_params=""
 if [ "$sim" == "formation" ]; then
- j_params="$model $num 1"
+ j_params="$model $num $sim $team"
 fi
 if [ "$sim" == "race" ]; then
- j_params="$model $num 1"
+ j_params="$model $num $sim $team"
 fi
 if [[ -z "$j_params" ]]; then
   echo "invalid sim in $1"
@@ -32,7 +34,7 @@ if [[ -z "$j_params" ]]; then
 fi
 
 s_cmd="./${sim}.sh prof ${type} ${num} ${world}"
-j_cmd="./${sim}_judge.py ${j_params}"
+j_cmd="./ui.py ${j_params}"
 
 out_d="out_${sim}_${type}_${world}_${num}"
 mkdir -p $out_d
