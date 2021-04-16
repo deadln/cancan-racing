@@ -288,7 +288,7 @@ def mc_race(pt, n, dt, target):  # Повторяется с частотой fr
     if current_obstacle[n]['state'] == 'takeoff' and \
         (drone_departion_time == -1 or dt - drone_departion_time > DELAY_BETWEEN_DRONES) and \
         (telemetry is not None and telemetry.pose.position.z >= 0.5) or \
-        current_obstacle[n]['state'] == 'flight':
+        current_obstacle[n]['state'] == 'flight' or current_obstacle[n]['state'] == 'landing':
         if current_obstacle[n]['state'] == 'takeoff':
             current_obstacle[n]['state'] = 'flight'
             drone_departion_time = dt
