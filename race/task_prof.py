@@ -341,7 +341,7 @@ def get_lz(n):
     # Сдвигаемся в левый нижний угол посадочной площадки
     land_zone['x'] += norm_vect['x'] * 8
     land_zone['y'] += norm_vect['y'] * 8
-    lz_num = len(lz)  # Номер посадочного места
+    lz_num = 63 - len(lz)  # Номер посадочного места
     norm_vect = get_wall_norm_vect(centrals[-1]['points'])
     # Отсчитываем посадочное место в сторону глухой стены
     land_zone['x'] += norm_vect['x'] * (lz_num // 8)
