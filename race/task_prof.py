@@ -46,8 +46,8 @@ SPEED = 3  # Скорость сближения с отверстием
 
 # Функция для определения аномальной телеметрии
 def is_anomaly(telemetry):
-    return not (-20 < telemetry.pose.position.x < 140 and -20 < telemetry.pose.position.y < 140 and \
-                0 < telemetry.pose.position.z < 21)
+    return not (-20 < telemetry['x'] < 140 and -20 < telemetry['y'] < 140 and \
+                0 < telemetry['z'] < 21)
 
 
 # Функция знака
@@ -146,7 +146,7 @@ def get_distance(x1, y1, z1, x2, y2, z2):
 # Получить расстояние до линии, которая проецируется из выбранного дроном отверстия перпендикулярно стене
 def get_current_line_distance(n, telemetry):
     return walls[current_obstacle[n]['wall_num']]['holes'][current_obstacle[n]['hole_num']]['line'].get_point_dist(
-        Point(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z))
+        Point(telemetry['x'], telemetry['y'], telemetry['z']))
 
 
 ## Функции связанные с полётом и ROS
@@ -283,8 +283,9 @@ def get_telemetry(n):
     telemetry = data[n].get('local_position/pose')
     if telemetry is None:
         return None
+    telemetry = {'x': telemetry.pose.position.x, 'y': telemetry.pose.position.y, 'z': telemetry.pose.position.z}
     if n not in telemetry_correction.keys():
-        if telemetry.pose.position.x < 0.5 and telemetry.pose.position.y < 0.5:
+        if telemetry['x'] < 0.5 and telemetry['y'] < 0.5:
             print(f'{n}: ABNORMAL COORDS')
             with open('start_positions.txt', 'r') as f:
                 positions = f.read()
@@ -296,9 +297,8 @@ def get_telemetry(n):
         else:
             telemetry_correction[n]['x'] = 0.0
             telemetry_correction[n]['y'] = 0.0
-    print(f'{n}: CORRECTION+')
-    telemetry.pose.position.x += telemetry_correction[n]['x']
-    telemetry.pose.position.y += telemetry_correction[n]['y']
+    telemetry['x'] += telemetry_correction[n]['x']
+    telemetry['y'] += telemetry_correction[n]['y']
     return telemetry
 
 
@@ -311,14 +311,13 @@ def mc_race(pt, n, dt, target, telemetry):  # Повторяется с част
         set_vel(pt, 0, 0, 0.5)
     if current_obstacle[n]['state'] == 'takeoff' and \
             (drone_departion_time == -1 or dt - drone_departion_time > DELAY_BETWEEN_DRONES) and \
-            (telemetry is not None and telemetry.pose.position.z >= 0.5) or \
+            (telemetry is not None and telemetry['z'] >= 0.5) or \
             current_obstacle[n]['state'] == 'flight' or current_obstacle[n]['state'] == 'landing':
         if current_obstacle[n]['state'] == 'takeoff':
             current_obstacle[n]['state'] = 'flight'
             drone_departion_time = dt
         # Летим в точку target
         if target['mode'] == 'pos':
-            print(f'{n}: CORRECTION-')
             set_pos(pt, target['x'] - telemetry_correction[n]['x'], target['y'] - telemetry_correction[n]['y'],
                     target['z'])
             # set_pos(pt, target['x'], target['y'], target['z'])
@@ -388,27 +387,15 @@ def set_target(n, telemetry):
             wall_vect = get_wall_norm_vect(centrals[current_obstacle[n]['wall_num']]['points'])
             for key in target.keys():
                 target[key] += wall_vect[key] * TARGET_POINT_BIAS
-            # Если мы летим к точке, и поравняемся с прямой, проецируемой этой точкой, а также достаточно близки к стене
-            # if get_current_line_distance(n, telemetry) < LINE_EPS:
-            #     print('YES 1')
-            # else:
-            #     print('LINE DISTANCE', get_current_line_distance(n, telemetry))
-            # if walls[current_obstacle[n]['wall_num']]['surface'].get_point_dist(
-            #             Point(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z)) < 5:
-            #     print('YES 2')
-            # else:
-            #     print('SURFACE DISTANCE', walls[current_obstacle[n]['wall_num']]['surface'].get_point_dist(
-            #             Point(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z)))
             if get_current_line_distance(n, telemetry) < LINE_EPS and \
                     walls[current_obstacle[n]['wall_num']]['surface'].get_point_dist(
-                        Point(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z)) < 5:
-                print(f'{n}FULL THROTTLE')
+                        Point(telemetry['x'], telemetry['y'], telemetry['z'])) < 5:
                 # Смещаем цель полёта вперёд, за стену
                 for key in target.keys():
                     target[key] -= wall_vect[key] * TARGET_POINT_BIAS * 2
                 # Назначаем полётной целью вектор скорости, направленный в точку за стеной
-                target = get_speed_vect({'x': telemetry.pose.position.x, 'y': telemetry.pose.position.y,
-                                         'z': telemetry.pose.position.z}, target, SPEED)
+                target = get_speed_vect({'x': telemetry['x'], 'y': telemetry['y'],
+                                         'z': telemetry['z']}, target, SPEED)
                 target['mode'] = 'vel'
             # Если мы далеко от отверстия, то аккуратно приближаемся
             else:
@@ -514,8 +501,8 @@ def offboard_loop():  # Запускается один раз
                 # telemetry = data[n].get('local_position/pose')  # Получение текущих координат дрона
                 telemetry = get_telemetry(n)  # Получение текущих координат дрона
                 if telemetry is not None:
-                    telems[n].publish(str(telemetry.pose.position.x) + ' ' + str(telemetry.pose.position.y) + ' ' + str(
-                        telemetry.pose.position.z))
+                    telems[n].publish(str(telemetry['x']) + ' ' + str(telemetry['y']) + ' ' + str(
+                        telemetry['z']))
                 else:
                     telems[n].publish(str(telemetry))
                 # Обнаружение аномальной телеметрии
@@ -527,7 +514,7 @@ def offboard_loop():  # Запускается один раз
                     # print(f'{n}: TELEMETRY IS ABNORMAL')
 
                 target = set_target(n, telemetry)
-                pos = Point(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z)
+                pos = Point(telemetry['x'], telemetry['y'], telemetry['z'])
 
                 # Если назначена посадка
                 if current_obstacle[n]['state'] == 'landing':
@@ -546,7 +533,7 @@ def offboard_loop():  # Запускается один раз
                     target = set_target(n, telemetry)  # Назначение новой стены
                 # Если достигнута окрестность центра поворота
                 elif current_obstacle[n]['point_num'] < len(centrals[current_obstacle[n]['wall_num']]['points']) - 1 and \
-                        get_distance(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z,
+                        get_distance(telemetry['x'], telemetry['y'], telemetry['z'],
                                      target['x'], target['y'], target['z']) < TURN_EPS:
                     print(f'{n}:NEXT POINT')
                     current_obstacle[n]['point_num'] += 1
@@ -558,17 +545,13 @@ def offboard_loop():  # Запускается один раз
                 if telemetry is None:
                     target = {'x': 0, 'y': 0, 'z': 0, 'mode': 'vel'}
                 else:
-                    target = {'x': telemetry.pose.position.x, 'y': telemetry.pose.position.y,
-                              'z': telemetry.pose.position.z,
+                    target = {'x': telemetry['x'], 'y': telemetry['y'],
+                              'z': telemetry['z'],
                               'mode': 'pos'}
             if target is not None:
                 # Отправка полётной цели и публикация данных в топиках
                 mc_race(pt, n, dt, target, telemetry)
                 pub_pt[n].publish(pt)
-                # if target['mode'] == 'pos':
-                #     tg = dict(target)
-                #     tg['x'] -= telemetry_correction['x']
-                #     tg['y'] -= telemetry_correction['y']
                 targets[n].publish(str(target))
 
         rate.sleep()
