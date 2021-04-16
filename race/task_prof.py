@@ -31,6 +31,7 @@ walls = []
 
 current_obstacle = {}  # Словарь с текущими препятствиями для отдельных аппаратов
 lz = {}  # Словарь с местами "посадки" для дронов, пролетевших трассу
+telemetry_correction = {}  # Словарь корректировки телеметрии
 drone_departion_time = -1
 
 TURN_EPS = 1.5  # Окрестность, при вхождении в которую поворот считается пройденным
@@ -278,10 +279,22 @@ def get_least_count_hole(holes_list):
     return min_num
 
 
+# def get_telemetry(n):
+#     telemetry = data[n].get('local_position/pose')
+#     if telemetry is None:
+#         return None
+#     if n not in telemetry_correction.keys():
+#         if telemetry.pose.position.x < 0.5 and telemetry.pose.position.y < 0.5:
+#             with open('start_positions.txt', 'r') as f:
+#                 positions = f.read()
+#             positions = positions.split('\n')
+#             position = positions[n - 1]
+#             telemetry_correction[n] = {}
+#             telemetry_correction[n]['x'] =
+
 # Основная функция полётных команд
-def mc_race(pt, n, dt, target):  # Повторяется с частотой freq
+def mc_race(pt, n, dt, target, telemetry):  # Повторяется с частотой freq
     global drone_departion_time
-    telemetry = data[n].get('local_position/pose')
 
     if current_obstacle[n]['state'] == 'takeoff':
         # скорость вверх
@@ -473,6 +486,7 @@ def offboard_loop():  # Запускается один раз
             arming(n, True)
             try:
                 telemetry = data[n].get('local_position/pose')  # Получение текущих координат дрона
+                # telemetry = get_telemetry(n)  # Получение текущих координат дрона
                 # Обнаружение аномальной телеметрии
                 if telemetry is None:
                     # print(f'{n}: TELEMETRY IS MISSING')
@@ -518,7 +532,7 @@ def offboard_loop():  # Запускается один раз
                               'mode': 'pos'}
             if target is not None:
                 # Отправка полётной цели и публикация данных в топиках
-                mc_race(pt, n, dt, target)
+                mc_race(pt, n, dt, target, telemetry)
                 pub_pt[n].publish(pt)
                 targets[n].publish(str(target))
 
