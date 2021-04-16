@@ -285,6 +285,7 @@ def get_telemetry(n):
         return None
     if n not in telemetry_correction.keys():
         if telemetry.pose.position.x < 0.5 and telemetry.pose.position.y < 0.5:
+            print(f'{n}: ABNORMAL COORDS')
             with open('start_positions.txt', 'r') as f:
                 positions = f.read()
             positions = positions.split('\n')
@@ -295,8 +296,9 @@ def get_telemetry(n):
         else:
             telemetry_correction[n]['x'] = 0.0
             telemetry_correction[n]['y'] = 0.0
-    telemetry.pose.position.x -= telemetry_correction[n]['x']
-    telemetry.pose.position.y -= telemetry_correction[n]['y']
+    print(f'{n}: CORRECTION+')
+    telemetry.pose.position.x += telemetry_correction[n]['x']
+    telemetry.pose.position.y += telemetry_correction[n]['y']
     return telemetry
 
 
@@ -316,8 +318,10 @@ def mc_race(pt, n, dt, target, telemetry):  # Повторяется с част
             drone_departion_time = dt
         # Летим в точку target
         if target['mode'] == 'pos':
-            set_pos(pt, target['x'] + telemetry_correction[n]['x'], target['y'] + telemetry_correction[n]['y'],
+            print(f'{n}: CORRECTION-')
+            set_pos(pt, target['x'] - telemetry_correction[n]['x'], target['y'] - telemetry_correction[n]['y'],
                     target['z'])
+            # set_pos(pt, target['x'], target['y'], target['z'])
         # Или устанавливаем вектор скорости target
         elif target['mode'] == 'vel':
             set_vel(pt, target['x'], target['y'], target['z'])
@@ -385,9 +389,20 @@ def set_target(n, telemetry):
             for key in target.keys():
                 target[key] += wall_vect[key] * TARGET_POINT_BIAS
             # Если мы летим к точке, и поравняемся с прямой, проецируемой этой точкой, а также достаточно близки к стене
+            # if get_current_line_distance(n, telemetry) < LINE_EPS:
+            #     print('YES 1')
+            # else:
+            #     print('LINE DISTANCE', get_current_line_distance(n, telemetry))
+            # if walls[current_obstacle[n]['wall_num']]['surface'].get_point_dist(
+            #             Point(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z)) < 5:
+            #     print('YES 2')
+            # else:
+            #     print('SURFACE DISTANCE', walls[current_obstacle[n]['wall_num']]['surface'].get_point_dist(
+            #             Point(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z)))
             if get_current_line_distance(n, telemetry) < LINE_EPS and \
                     walls[current_obstacle[n]['wall_num']]['surface'].get_point_dist(
                         Point(telemetry.pose.position.x, telemetry.pose.position.y, telemetry.pose.position.z)) < 5:
+                print(f'{n}FULL THROTTLE')
                 # Смещаем цель полёта вперёд, за стену
                 for key in target.keys():
                     target[key] -= wall_vect[key] * TARGET_POINT_BIAS * 2
@@ -406,7 +421,7 @@ def set_target(n, telemetry):
             target['tag'] = 'turn'
     # Исключение, которое срабатывает когда дрон пролетел отверстие, а следующая стена ещё не была опубликована
     except IndexError:
-        print(f'{n}: INDEX ERROR')
+        # print(f'{n}: INDEX ERROR')
         target = {'x': 0, 'y': 0, 'z': 0, 'mode': 'vel'}  # Мера для стабилизации дрона
     return target
 
@@ -498,10 +513,14 @@ def offboard_loop():  # Запускается один раз
             try:
                 # telemetry = data[n].get('local_position/pose')  # Получение текущих координат дрона
                 telemetry = get_telemetry(n)  # Получение текущих координат дрона
-                telems[n].publish(str(telemetry))
-                # Обнаружение аномальной телеget_telemetryметрии
+                if telemetry is not None:
+                    telems[n].publish(str(telemetry.pose.position.x) + ' ' + str(telemetry.pose.position.y) + ' ' + str(
+                        telemetry.pose.position.z))
+                else:
+                    telems[n].publish(str(telemetry))
+                # Обнаружение аномальной телеметрии
                 if telemetry is None:
-                    print(f'{n}: TELEMETRY IS MISSING')
+                    # print(f'{n}: TELEMETRY IS MISSING')
                     raise IndexError
                 if is_anomaly(telemetry):
                     pass
@@ -534,7 +553,7 @@ def offboard_loop():  # Запускается один раз
                     target = set_target(n, telemetry)
             # Исключение, которое срабатывает когда дрон пролетел отверстие, а следующая стена ещё не была опубликована
             except IndexError:
-                print(f'{n}: INDEX ERROR')
+                # print(f'{n}: INDEX ERROR')
                 # Меры для стабилизации дрона
                 if telemetry is None:
                     target = {'x': 0, 'y': 0, 'z': 0, 'mode': 'vel'}
@@ -546,6 +565,10 @@ def offboard_loop():  # Запускается один раз
                 # Отправка полётной цели и публикация данных в топиках
                 mc_race(pt, n, dt, target, telemetry)
                 pub_pt[n].publish(pt)
+                # if target['mode'] == 'pos':
+                #     tg = dict(target)
+                #     tg['x'] -= telemetry_correction['x']
+                #     tg['y'] -= telemetry_correction['y']
                 targets[n].publish(str(target))
 
         rate.sleep()
