@@ -203,7 +203,7 @@ def service_proxy(n, path, arg_type, *args, **kwds):
     service = rospy.ServiceProxy(f"/mavros{n}/{path}", arg_type)
     ret = service(*args, **kwds)
 
-    #rospy.loginfo(f"{n}: {path} {args}, {kwds} => {ret}")  # Дебаг-вывод при обращении к сервисам
+    # rospy.loginfo(f"{n}: {path} {args}, {kwds} => {ret}")  # Дебаг-вывод при обращении к сервисам
 
 
 # Арминг
@@ -279,18 +279,26 @@ def get_least_count_hole(holes_list):
     return min_num
 
 
-# def get_telemetry(n):
-#     telemetry = data[n].get('local_position/pose')
-#     if telemetry is None:
-#         return None
-#     if n not in telemetry_correction.keys():
-#         if telemetry.pose.position.x < 0.5 and telemetry.pose.position.y < 0.5:
-#             with open('start_positions.txt', 'r') as f:
-#                 positions = f.read()
-#             positions = positions.split('\n')
-#             position = positions[n - 1]
-#             telemetry_correction[n] = {}
-#             telemetry_correction[n]['x'] =
+def get_telemetry(n):
+    telemetry = data[n].get('local_position/pose')
+    if telemetry is None:
+        return None
+    if n not in telemetry_correction.keys():
+        if telemetry.pose.position.x < 0.5 and telemetry.pose.position.y < 0.5:
+            with open('start_positions.txt', 'r') as f:
+                positions = f.read()
+            positions = positions.split('\n')
+            position = positions[n - 1].split()
+            telemetry_correction[n] = {}
+            telemetry_correction[n]['x'] = float(position[0])
+            telemetry_correction[n]['y'] = float(position[1])
+        else:
+            telemetry_correction[n]['x'] = 0.0
+            telemetry_correction[n]['y'] = 0.0
+    telemetry.pose.position.x -= telemetry_correction[n]['x']
+    telemetry.pose.position.y -= telemetry_correction[n]['y']
+    return telemetry
+
 
 # Основная функция полётных команд
 def mc_race(pt, n, dt, target, telemetry):  # Повторяется с частотой freq
@@ -300,15 +308,16 @@ def mc_race(pt, n, dt, target, telemetry):  # Повторяется с част
         # скорость вверх
         set_vel(pt, 0, 0, 0.5)
     if current_obstacle[n]['state'] == 'takeoff' and \
-        (drone_departion_time == -1 or dt - drone_departion_time > DELAY_BETWEEN_DRONES) and \
-        (telemetry is not None and telemetry.pose.position.z >= 0.5) or \
-        current_obstacle[n]['state'] == 'flight' or current_obstacle[n]['state'] == 'landing':
+            (drone_departion_time == -1 or dt - drone_departion_time > DELAY_BETWEEN_DRONES) and \
+            (telemetry is not None and telemetry.pose.position.z >= 0.5) or \
+            current_obstacle[n]['state'] == 'flight' or current_obstacle[n]['state'] == 'landing':
         if current_obstacle[n]['state'] == 'takeoff':
             current_obstacle[n]['state'] = 'flight'
             drone_departion_time = dt
         # Летим в точку target
         if target['mode'] == 'pos':
-            set_pos(pt, target['x'], target['y'], target['z'])
+            set_pos(pt, target['x'] + telemetry_correction[n]['x'], target['y'] + telemetry_correction[n]['y'],
+                    target['z'])
         # Или устанавливаем вектор скорости target
         elif target['mode'] == 'vel':
             set_vel(pt, target['x'], target['y'], target['z'])
@@ -407,9 +416,11 @@ def offboard_loop():  # Запускается один раз
     # создаем топики, для публикации управляющих значений, а также полётных целей (для дебага)
     pub_pt = {}
     targets = {}
+    telems = {}
     for n in range(1, instances_num + 1):
         pub_pt[n] = rospy.Publisher(f"/mavros{n}/setpoint_raw/local", PositionTarget, queue_size=10)
         targets[n] = rospy.Publisher(f"/mavros{n}/target", String, queue_size=10)
+        telems[n] = rospy.Publisher(f"/mavros{n}/telemetry", String, queue_size=10)
 
     pt = PositionTarget()  # Объект, посредством которого можно задать желаемое положение дрона и желаемые вектора скорости
     # см. также описание mavlink сообщения https://mavlink.io/en/messages/common.html#SET_POSITION_TARGET_LOCAL_NED
@@ -485,11 +496,12 @@ def offboard_loop():  # Запускается один раз
             set_mode(n, "OFFBOARD")  # Переключение в режим полёта по программе
             arming(n, True)
             try:
-                telemetry = data[n].get('local_position/pose')  # Получение текущих координат дрона
-                # telemetry = get_telemetry(n)  # Получение текущих координат дрона
-                # Обнаружение аномальной телеметрии
+                # telemetry = data[n].get('local_position/pose')  # Получение текущих координат дрона
+                telemetry = get_telemetry(n)  # Получение текущих координат дрона
+                telems[n].publish(str(telemetry))
+                # Обнаружение аномальной телеget_telemetryметрии
                 if telemetry is None:
-                    # print(f'{n}: TELEMETRY IS MISSING')
+                    print(f'{n}: TELEMETRY IS MISSING')
                     raise IndexError
                 if is_anomaly(telemetry):
                     pass
