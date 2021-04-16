@@ -18,12 +18,14 @@ from scipy.spatial.transform import Rotation
 from sklearn.preprocessing import normalize
 from std_msgs.msg import String
 
+# warnings.filterwarnings('ignore')
+
 # PARAMETERS
 COLLISION_DELTA_TIME = 0.5
 # BEST_FORMATION_TICKS = 30
 REFORMATION_THRESHOLD = 2
-A, B, C = 1, 1, 1
-SPEED_THRESHOLD = 1
+A, B, C = 10, 0.5, 3
+SPEED_THRESHOLD = 5
 
 # PASS_N = 3
 # MODEL = 'iris'
