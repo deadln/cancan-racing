@@ -33,7 +33,7 @@ if [ "$1" == "prof" ]; then
 
   if [ "$world" == "formation_1.world" ]; then
     suf="_1/$num"
-    args=""
+    args="--names A C P S"
   fi
 
   ./bin/formations_gen.py $model $num formation/borders.txt formation/test_fs${suf}/ $args &
