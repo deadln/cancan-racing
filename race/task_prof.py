@@ -222,6 +222,7 @@ def set_mode(n, new_mode):
 # Управление по точкам, локальная система координат.
 def set_pos(pt, x, y, z):
     pt.type_mask = pt.IGNORE_VX | pt.IGNORE_VY | pt.IGNORE_VZ | pt.IGNORE_AFX | pt.IGNORE_AFY | pt.IGNORE_AFZ | pt.IGNORE_YAW | pt.IGNORE_YAW_RATE
+    # pt.type_mask = pt.IGNORE_VX | pt.IGNORE_VY | pt.IGNORE_VZ | pt.IGNORE_AFX | pt.IGNORE_AFY | pt.IGNORE_AFZ
 
     # Смещение на восток
     pt.position.x = x
@@ -456,6 +457,7 @@ def offboard_loop():  # Запускается один раз
                     p2 = dict_to_point(obstacle_to_coords(central['points'], wall['holes'][i]))
                     p2.add_point(dict_to_point(get_wall_norm_vect(central['points'])))
                     wall['holes'][i]['line'] = Line(p1, p2)
+                print('NEW WALL', wall)
                 walls.append(wall)
         else:
             continue
