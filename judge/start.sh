@@ -48,7 +48,6 @@ pushd $s_dir >/dev/null
 popd >/dev/null
 
 echo "waiting topics ..."
-sleep 5
 ./echo_pos.sh $num 1 >/dev/null 2>/dev/null
 
 j_log=judge.log
