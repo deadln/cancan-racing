@@ -34,6 +34,8 @@ lz = {}  # Словарь с местами "посадки" для дронов
 telemetry_correction = {}  # Словарь корректировки телеметрии
 telemetries = {}
 drone_departion_time = -1
+turn_points = {}
+turn_point_counter = 0
 
 TURN_EPS = 1.9  # Окрестность, при вхождении в которую поворот считается пройденным
 LINE_EPS = 0.4  # Окрестность линии, при вхождению в которую включается управление скоростями
@@ -44,6 +46,7 @@ SPEED = 3  # Скорость сближения с отверстием
 INF = 9999999999999
 COLLISION_DISTANCE = 1.2
 CORRECTION_SPEED = 1
+TURN_POINT_BIAS = 7
 
 
 ## Вспомогательные функции
@@ -117,15 +120,24 @@ def obstacle_to_coords(central, hole):  # Координаты точки цен
     return res
 
 
-# Получение нормализованного вектора, направленного в сторону стены
-def get_wall_norm_vect(cent_line):
-    vect = {'x': cent_line[-1]['x'] - cent_line[-2]['x'], 'y': cent_line[-1]['y'] - cent_line[-2]['y'],
-            'z': cent_line[-1]['z'] - cent_line[-2]['z']}
+def get_norm_vect(p1, p2):
+    vect = {'x': p2['x'] - p1['x'], 'y': p2['y'] - p1['y'],
+            'z': p2['z'] - p1['z']}
     vect_len = math.sqrt(pow(vect['x'], 2) + pow(vect['y'], 2) + pow(vect['z'], 2))
     vect['x'] = vect['x'] / vect_len
     vect['y'] = vect['y'] / vect_len
     vect['z'] = vect['z'] / vect_len
     return vect
+
+# Получение нормализованного вектора, направленного в сторону стены
+def get_wall_norm_vect(cent_line):
+    # vect = {'x': cent_line[-1]['x'] - cent_line[-2]['x'], 'y': cent_line[-1]['y'] - cent_line[-2]['y'],
+    #         'z': cent_line[-1]['z'] - cent_line[-2]['z']}
+    # vect_len = math.sqrt(pow(vect['x'], 2) + pow(vect['y'], 2) + pow(vect['z'], 2))
+    # vect['x'] = vect['x'] / vect_len
+    # vect['y'] = vect['y'] / vect_len
+    # vect['z'] = vect['z'] / vect_len
+    return get_norm_vect(cent_line[-2], cent_line[-1])
 
 
 # Поворот вектора в плоскости XY на 90 вправо (dir >= 0) или влево (dir < 0)
@@ -282,6 +294,18 @@ def get_least_count_hole(holes_list):
     return min_num
 
 
+def get_turn_point(n):
+    v1 = get_norm_vect(centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num']],
+                       centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num'] + 1])
+    v2 = get_norm_vect(centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num']],
+                       centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num'] - 1])
+    turn_point = dict(centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num']])
+    for key in v2.keys():
+        turn_point[key] += (v1[key] + v2[key]) * TURN_POINT_BIAS
+    return turn_point
+
+
+
 def get_telemetry(n):
     telemetry = data[n].get('local_position/pose')
     if telemetry is None:
@@ -421,7 +445,8 @@ def set_target(n, telemetry):
                 target['tag'] = 'approaching'
         # В противном случае сначала надо достигнуть точки центральной линии по пути
         else:
-            target = centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num']]
+            target = get_turn_point(n)
+            # target = centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num']]
             target['mode'] = 'pos'
             target['tag'] = 'turn'
     # Исключение, которое срабатывает когда дрон пролетел отверстие, а следующая стена ещё не была опубликована
