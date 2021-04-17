@@ -34,13 +34,14 @@ lz = {}  # Словарь с местами "посадки" для дронов
 telemetry_correction = {}  # Словарь корректировки телеметрии
 drone_departion_time = -1
 
-TURN_EPS = 1.5  # Окрестность, при вхождении в которую поворот считается пройденным
-LINE_EPS = 0.4  # Окрестность линии, при вхождению в которую включается управление скоростями
+TURN_EPS = 1.9  # Окрестность, при вхождении в которую поворот считается пройденным
+LINE_EPS = 0.6  # Окрестность линии, при вхождению в которую включается управление скоростями
 DELAY_BETWEEN_DRONES = 2  # Задержка между вылетами дронов в секундах
 TARGET_POINT_BIAS = -0.6  # Величина смещения точки цели полёта
 TARGET_SURFACE_BIAS = 0.6  # Величина смещения плоскости стены
 SPEED = 3  # Скорость сближения с отверстием
 INF = 9999999999999
+
 
 ## Вспомогательные функции
 
@@ -394,7 +395,10 @@ def set_target(n, telemetry):
             wall_vect = get_wall_norm_vect(centrals[current_obstacle[n]['wall_num']]['points'])
             for key in target.keys():
                 target[key] += wall_vect[key] * TARGET_POINT_BIAS
-            if get_current_line_distance(n, telemetry) < LINE_EPS and \
+            if get_current_line_distance(n, telemetry) < min(
+                    walls[current_obstacle[n]['wall_num']]['holes'][current_obstacle[n]['hole_num']]['w'],
+                    walls[current_obstacle[n]['wall_num']]['holes'][current_obstacle[n]['hole_num']][
+                        'h']) - LINE_EPS and \
                     walls[current_obstacle[n]['wall_num']]['surface'].get_point_dist(
                         Point(telemetry['x'], telemetry['y'], telemetry['z'])) < 5:
                 # Смещаем цель полёта вперёд, за стену
