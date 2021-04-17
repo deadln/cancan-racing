@@ -332,8 +332,8 @@ def get_lz(n):
     land_zone = dict(centrals[-1]['points'][-1])
     norm_vect = get_wall_norm_vect(centrals[-1]['points'])  # Вектор в глухую стену
     # Сдвигаем точку до другого края посадочной площадки
-    land_zone['x'] -= norm_vect['x'] * 18
-    land_zone['y'] -= norm_vect['y'] * 18
+    land_zone['x'] -= norm_vect['x'] * 2
+    land_zone['y'] -= norm_vect['y'] * 2
     # Поворачиваем вектор на 90 градусов влево
     swp = norm_vect['x']
     norm_vect['x'] = norm_vect['y'] * (-1)
@@ -341,18 +341,18 @@ def get_lz(n):
     # Сдвигаемся в левый нижний угол посадочной площадки
     land_zone['x'] += norm_vect['x'] * 8
     land_zone['y'] += norm_vect['y'] * 8
-    lz_num = 63 - len(lz)  # Номер посадочного места
+    lz_num = len(lz)  # Номер посадочного места
     norm_vect = get_wall_norm_vect(centrals[-1]['points'])
     # Отсчитываем посадочное место в сторону глухой стены
-    land_zone['x'] += norm_vect['x'] * (lz_num // 8)
-    land_zone['y'] += norm_vect['y'] * (lz_num // 8)
+    land_zone['x'] -= norm_vect['x'] * (lz_num // 16)
+    land_zone['y'] -= norm_vect['y'] * (lz_num // 16)
     # Поворачиваем вектор на 90 градусов вправо
     swp = norm_vect['x']
     norm_vect['x'] = norm_vect['y']
     norm_vect['y'] = swp * (-1)
     # Отсчитываем посадочное место вправо
-    land_zone['x'] += norm_vect['x'] * (lz_num % 8)
-    land_zone['y'] += norm_vect['y'] * (lz_num % 8)
+    land_zone['x'] += norm_vect['x'] * (lz_num % 16)
+    land_zone['y'] += norm_vect['y'] * (lz_num % 16)
     land_zone['z'] = 1
     return land_zone
 
