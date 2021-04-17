@@ -288,7 +288,7 @@ def get_telemetry(n):
     if n not in telemetry_correction.keys():
         if telemetry['x'] < 0.5 and telemetry['y'] < 0.5:
             print(f'{n}: ABNORMAL COORDS')
-            with open('start_positions.txt', 'r') as f:
+            with open('places.txt', 'r') as f:
                 positions = f.read()
             positions = positions.split('\n')
             position = positions[n - 1].split()
