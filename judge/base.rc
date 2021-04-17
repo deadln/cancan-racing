@@ -1,7 +1,7 @@
 sim="race"
 type="mc"
 
-world="race.world"
+world="race_1.world"
 num=6
 
-u_cmd="python3 $HOME/cancan-racing/race/task_prof.py $num"
+u_cmd="python3 $HOME/drone-games/race/task_prof.py $num"
