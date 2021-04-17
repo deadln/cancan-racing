@@ -2,7 +2,7 @@ sim="race"
 type="mc"
 
 world="race_1.world"
-num=12
+num=24
 
-team="My_Team"
+team="Cancan"
 u_cmd="python3 $HOME/drone-racing/race/task_prof.py $num"
