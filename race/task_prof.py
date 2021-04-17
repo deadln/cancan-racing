@@ -32,6 +32,7 @@ walls = []
 current_obstacle = {}  # Словарь с текущими препятствиями для отдельных аппаратов
 lz = {}  # Словарь с местами "посадки" для дронов, пролетевших трассу
 telemetry_correction = {}  # Словарь корректировки телеметрии
+telemetries = {}
 drone_departion_time = -1
 
 TURN_EPS = 1.9  # Окрестность, при вхождении в которую поворот считается пройденным
@@ -41,6 +42,8 @@ TARGET_POINT_BIAS = -0.6  # Величина смещения точки цел�
 TARGET_SURFACE_BIAS = 0.6  # Величина смещения плоскости стены
 SPEED = 3  # Скорость сближения с отверстием
 INF = 9999999999999
+COLLISION_DISTANCE = 1
+CORRECTION_SPEED = 1
 
 
 ## Вспомогательные функции
@@ -307,6 +310,30 @@ def get_telemetry(n):
 def mc_race(pt, n, dt, target, telemetry):  # Повторяется с частотой freq
     global drone_departion_time
 
+    # Меры по избежанию столкновений
+    close_drones = []
+    for i in range(1, instances_num + 1):
+        if telemetry is not None and telemetries[i] is not None and i != n and get_distance(telemetry['x'],
+                                                                                            telemetry['y'],
+                                                                                            telemetry['z'],
+                                                                                            telemetries[i]['x'],
+                                                                                            telemetries[i]['y'],
+                                                                                            telemetries[i][
+                                                                                                'z']) < COLLISION_DISTANCE:
+            close_drones.append(telemetries[i])
+    if len(close_drones) > 0:
+        correction_vector = {'x': 0, 'y': 0, 'z': 0}
+        for drone in close_drones:
+            drone_vect = get_speed_vect(drone, telemetry, CORRECTION_SPEED)
+            for key in correction_vector.keys():
+                correction_vector[key] += drone_vect[key]
+        set_vel(pt, correction_vector['x'], correction_vector['y'], correction_vector['z'])
+        print(f'{n}: CORRECTION', correction_vector)
+        return
+        # vect_len = get_distance(telemetry['x'], telemetry['y'], telemetry['z'], drone['x'], drone['y'], drone['z'])
+        # for key in correction_vector.keys():
+        #     correction_vector[key] += (drone[key] - telemetry[key]) / vect_len
+
     if current_obstacle[n]['state'] == 'takeoff':
         # скорость вверх
         set_vel(pt, 0, 0, 0.5)
@@ -502,6 +529,8 @@ def offboard_loop():  # Запускается один раз
                 walls.append(wall)
         else:
             continue
+        for n in range(1, instances_num + 1):
+            telemetries[n] = get_telemetry(n)
         # управляем каждым аппаратом централизованно
         for n in range(1, instances_num + 1):
             # В ЭТОМ ЦИКЛЕ МЫ БУДЕМ ПОЛУЧАТЬ ДАННЫЕ О ТРАССЕ И ЗАДАВАТЬ ПОЛЁТНЫЕ ЦЕЛИ
@@ -514,7 +543,7 @@ def offboard_loop():  # Запускается один раз
             arming(n, True)
             try:
                 # telemetry = data[n].get('local_position/pose')  # Получение текущих координат дрона
-                telemetry = get_telemetry(n)  # Получение текущих координат дрона
+                telemetry = telemetries[n]  # Получение текущих координат дрона
                 if telemetry is not None:
                     telems[n].publish(str(telemetry['x']) + ' ' + str(telemetry['y']) + ' ' + str(
                         telemetry['z']))
