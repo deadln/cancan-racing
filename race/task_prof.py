@@ -298,6 +298,7 @@ def get_least_count_hole(holes_list):
 
 
 def get_turn_point(n):
+    global turn_point_counter
     if n in turn_points.keys():
         return turn_points[n]
     v1 = get_norm_vect(centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num']],
@@ -310,7 +311,12 @@ def get_turn_point(n):
     vect_cp = v1_p.get_cp(v2_p).get_dict()
     for key in v2.keys():
         turn_point[key] += (v1[key] + v2[key]) * TURN_POINT_BIAS
-    return turn_point
+        vect_cp[key] *= TURN_POINT_DISTANCE
+        turn_point[key] -= vect_cp[key] * (POINTS_PER_TURN / 2)
+        turn_point[key] += vect_cp[key] * turn_point_counter
+    turn_point_counter = (turn_point_counter + 1) % POINTS_PER_TURN
+    turn_points[n] = turn_point
+    return turn_points[n]
 
 
 def get_telemetry(n):
@@ -604,6 +610,7 @@ def offboard_loop():  # Запускается один раз
                         get_distance(telemetry['x'], telemetry['y'], telemetry['z'],
                                      target['x'], target['y'], target['z']) < TURN_EPS:
                     print(f'{n}:NEXT POINT')
+                    turn_points.pop(n, None)
                     current_obstacle[n]['point_num'] += 1
                     target = set_target(n, telemetry)
             # Исключение, которое срабатывает когда дрон пролетел отверстие, а следующая стена ещё не была опубликована
