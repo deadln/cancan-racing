@@ -40,7 +40,7 @@ DELAY_BETWEEN_DRONES = 2  # Задержка между вылетами дро�
 TARGET_POINT_BIAS = -0.6  # Величина смещения точки цели полёта
 TARGET_SURFACE_BIAS = 0.6  # Величина смещения плоскости стены
 SPEED = 3  # Скорость сближения с отверстием
-
+INF = 9999999999999
 
 ## Вспомогательные функции
 
@@ -327,7 +327,7 @@ def mc_race(pt, n, dt, target, telemetry):  # Повторяется с част
 
 
 def is_good_hole(hole):
-    if (hole['w'] >= 1) and (hole['h'] >= 0.4):
+    if (hole['w'] >= 1.5) and (hole['h'] >= 1):
         return True
     else:
         return False
@@ -484,12 +484,16 @@ def offboard_loop():  # Запускается один раз
                 # Создание плоскости и назначение признака того что дрон преодолел плоскость
                 wall['surface'] = Surface(p1, p2, p3)
                 wall['surface_sign'] = sign(wall['surface'].substitute_point(dict_to_point(central['points'][-1])))
-                # Построение прямой, перпендикулярной стене, для каждой точки центра отверстия
+                # Построение прямой, перпендикулярной стене, для каждой точки центра отверстия, а также удаление слишком
+                # маленьких отверстий
                 for i in range(len(wall['holes'])):
-                    p1 = dict_to_point(obstacle_to_coords(central['points'], wall['holes'][i]))
-                    p2 = dict_to_point(obstacle_to_coords(central['points'], wall['holes'][i]))
-                    p2.add_point(dict_to_point(get_wall_norm_vect(central['points'])))
-                    wall['holes'][i]['line'] = Line(p1, p2)
+                    if is_good_hole(wall['holes'][i]):
+                        p1 = dict_to_point(obstacle_to_coords(central['points'], wall['holes'][i]))
+                        p2 = dict_to_point(obstacle_to_coords(central['points'], wall['holes'][i]))
+                        p2.add_point(dict_to_point(get_wall_norm_vect(central['points'])))
+                        wall['holes'][i]['line'] = Line(p1, p2)
+                    else:
+                        wall['holes'][i]['drones'] = INF
                 print('NEW WALL', wall)
                 walls.append(wall)
         else:
