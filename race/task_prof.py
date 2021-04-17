@@ -36,7 +36,7 @@ telemetries = {}
 drone_departion_time = -1
 
 TURN_EPS = 1.9  # Окрестность, при вхождении в которую поворот считается пройденным
-LINE_EPS = 0.6  # Окрестность линии, при вхождению в которую включается управление скоростями
+LINE_EPS = 0.4  # Окрестность линии, при вхождению в которую включается управление скоростями
 DELAY_BETWEEN_DRONES = 2  # Задержка между вылетами дронов в секундах
 TARGET_POINT_BIAS = -0.6  # Величина смещения точки цели полёта
 TARGET_SURFACE_BIAS = 0.6  # Величина смещения плоскости стены
@@ -288,21 +288,25 @@ def get_telemetry(n):
     if telemetry is None:
         return None
     telemetry = {'x': telemetry.pose.position.x, 'y': telemetry.pose.position.y, 'z': telemetry.pose.position.z}
-    if n not in telemetry_correction.keys():
-        if telemetry['x'] < 0.5 and telemetry['y'] < 0.5:
-            print(f'{n}: ABNORMAL COORDS')
-            with open('places.txt', 'r') as f:
-                positions = f.read()
-            positions = positions.split('\n')
-            position = positions[n - 1].split()
-            telemetry_correction[n] = {}
-            telemetry_correction[n]['x'] = float(position[0])
-            telemetry_correction[n]['y'] = float(position[1])
-        else:
-            telemetry_correction[n]['x'] = 0.0
-            telemetry_correction[n]['y'] = 0.0
-    telemetry['x'] += telemetry_correction[n]['x']
-    telemetry['y'] += telemetry_correction[n]['y']
+    # if telemetry['z'] > 0.4 and n not in telemetry_correction.keys():
+    # if n not in telemetry_correction.keys():
+    #     if telemetry['x'] < 0.5 and telemetry['y'] < 0.5:
+    #         print(f'{n}: ABNORMAL COORDS')
+    #         with open('places.txt', 'r') as f:
+    #             positions = f.read()
+    #         positions = positions.split('\n')
+    #         position = positions[n - 1].split()
+    #         telemetry_correction[n] = {}
+    #         telemetry_correction[n]['x'] = float(position[0])
+    #         telemetry_correction[n]['y'] = float(position[1])
+    #     else:
+    #         telemetry_correction[n] = {}
+    #         telemetry_correction[n]['x'] = 0.0
+    #         telemetry_correction[n]['y'] = 0.0
+    # # else:
+    # #     return telemetry
+    # telemetry['x'] += telemetry_correction[n]['x']
+    # telemetry['y'] += telemetry_correction[n]['y']
     return telemetry
 
 
@@ -328,7 +332,7 @@ def mc_race(pt, n, dt, target, telemetry):  # Повторяется с част
             for key in correction_vector.keys():
                 correction_vector[key] += drone_vect[key]
         set_vel(pt, correction_vector['x'], correction_vector['y'], correction_vector['z'])
-        print(f'{n}: CORRECTION', correction_vector)
+        # print(f'{n}: CORRECTION', correction_vector)
         return
         # vect_len = get_distance(telemetry['x'], telemetry['y'], telemetry['z'], drone['x'], drone['y'], drone['z'])
         # for key in correction_vector.keys():
@@ -346,9 +350,9 @@ def mc_race(pt, n, dt, target, telemetry):  # Повторяется с част
             drone_departion_time = dt
         # Летим в точку target
         if target['mode'] == 'pos':
-            set_pos(pt, target['x'] - telemetry_correction[n]['x'], target['y'] - telemetry_correction[n]['y'],
-                    target['z'])
-            # set_pos(pt, target['x'], target['y'], target['z'])
+            # set_pos(pt, target['x'] - telemetry_correction[n]['x'], target['y'] - telemetry_correction[n]['y'],
+            #         target['z'])
+            set_pos(pt, target['x'], target['y'], target['z'])
         # Или устанавливаем вектор скорости target
         elif target['mode'] == 'vel':
             set_vel(pt, target['x'], target['y'], target['z'])
@@ -425,7 +429,7 @@ def set_target(n, telemetry):
             if get_current_line_distance(n, telemetry) < min(
                     walls[current_obstacle[n]['wall_num']]['holes'][current_obstacle[n]['hole_num']]['w'],
                     walls[current_obstacle[n]['wall_num']]['holes'][current_obstacle[n]['hole_num']][
-                        'h']) - LINE_EPS and \
+                        'h']) / 2 - LINE_EPS and \
                     walls[current_obstacle[n]['wall_num']]['surface'].get_point_dist(
                         Point(telemetry['x'], telemetry['y'], telemetry['z'])) < 5:
                 # Смещаем цель полёта вперёд, за стену
@@ -446,6 +450,8 @@ def set_target(n, telemetry):
             target['tag'] = 'turn'
     # Исключение, которое срабатывает когда дрон пролетел отверстие, а следующая стена ещё не была опубликована
     except IndexError:
+        if telemetry is not None:
+            print(f'{n}:', telemetry)
         # print(f'{n}: INDEX ERROR')
         target = {'x': 0, 'y': 0, 'z': 0, 'mode': 'vel'}  # Мера для стабилизации дрона
     return target
@@ -538,9 +544,9 @@ def offboard_loop():  # Запускается один раз
             # вектора скорости, см. также описание mavlink сообщения
             # https://mavlink.io/en/messages/common.html#SET_POSITION_TARGET_LOCAL_NED
             pt.coordinate_frame = pt.FRAME_LOCAL_NED
-
-            set_mode(n, "OFFBOARD")  # Переключение в режим полёта по программе
-            arming(n, True)
+            if dt > 15:
+                set_mode(n, "OFFBOARD")  # Переключение в режим полёта по программе
+                arming(n, True)
             try:
                 # telemetry = data[n].get('local_position/pose')  # Получение текущих координат дрона
                 telemetry = telemetries[n]  # Получение текущих координат дрона
@@ -589,6 +595,7 @@ def offboard_loop():  # Запускается один раз
                 if telemetry is None:
                     target = {'x': 0, 'y': 0, 'z': 0, 'mode': 'vel'}
                 else:
+                    print(f'{n}:', telemetry)
                     target = {'x': telemetry['x'], 'y': telemetry['y'],
                               'z': telemetry['z'],
                               'mode': 'pos'}
