@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QTimer, QTime, Qt
+from PyQt5.QtCore import QTimer, QTime, Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QFont
 from PyQt5.QtWidgets import QWidget, QTableWidget, QGridLayout, QTableWidgetItem, QMessageBox
 
@@ -7,6 +7,7 @@ COLOR_UNUSED = QColor(50, 48, 48)
 
 
 class MainWidget(QWidget):
+    show_msg = pyqtSignal()
 
     def __init__(self, formation):
         super().__init__()
@@ -14,6 +15,9 @@ class MainWidget(QWidget):
         self.formation = formation
 
         layout = QGridLayout()
+
+        self.show_msg.connect(self.show_message)
+        self.final_string = None
 
         self.table = QTableWidget()
         self.table.setFixedWidth(COLUMNS_WIDTH * 4 + 2)
@@ -234,4 +238,8 @@ class MainWidget(QWidget):
         else:
             string = "BAD DATA"
         # print(string)
-        QMessageBox.information(None, "RESULT", string, QMessageBox.Ok)
+        self.final_string = string
+        self.show_msg.emit()
+
+    def show_message(self):
+        QMessageBox.information(self.parent(), "RESULT", self.finalString, QMessageBox.Ok)
