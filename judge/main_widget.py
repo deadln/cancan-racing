@@ -242,4 +242,4 @@ class MainWidget(QWidget):
         self.show_msg.emit()
 
     def show_message(self):
-        QMessageBox.information(self.parent(), "RESULT", self.finalString, QMessageBox.Ok)
+        QMessageBox.information(self.parent(), "RESULT", self.final_string, QMessageBox.Ok)
