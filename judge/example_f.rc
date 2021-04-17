@@ -4,4 +4,5 @@ type="mc"
 world="formation.world"
 num=6
 
+team="My_Team"
 u_cmd="python3 $HOME/my_formation_task/run.py $num"
