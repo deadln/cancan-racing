@@ -50,8 +50,7 @@ CORRECTION_SPEED = 1
 
 # Функция для определения аномальной телеметрии
 def is_anomaly(telemetry):
-    return not (-20 < telemetry['x'] < 140 and -20 < telemetry['y'] < 140 and \
-                0 < telemetry['z'] < 21)
+    return telemetry['x'] < 0.1 and telemetry['y'] < 0.1
 
 
 # Функция знака
@@ -288,25 +287,6 @@ def get_telemetry(n):
     if telemetry is None:
         return None
     telemetry = {'x': telemetry.pose.position.x, 'y': telemetry.pose.position.y, 'z': telemetry.pose.position.z}
-    # if telemetry['z'] > 0.4 and n not in telemetry_correction.keys():
-    # if n not in telemetry_correction.keys():
-    #     if telemetry['x'] < 0.5 and telemetry['y'] < 0.5:
-    #         print(f'{n}: ABNORMAL COORDS')
-    #         with open('places.txt', 'r') as f:
-    #             positions = f.read()
-    #         positions = positions.split('\n')
-    #         position = positions[n - 1].split()
-    #         telemetry_correction[n] = {}
-    #         telemetry_correction[n]['x'] = float(position[0])
-    #         telemetry_correction[n]['y'] = float(position[1])
-    #     else:
-    #         telemetry_correction[n] = {}
-    #         telemetry_correction[n]['x'] = 0.0
-    #         telemetry_correction[n]['y'] = 0.0
-    # # else:
-    # #     return telemetry
-    # telemetry['x'] += telemetry_correction[n]['x']
-    # telemetry['y'] += telemetry_correction[n]['y']
     return telemetry
 
 
@@ -332,11 +312,7 @@ def mc_race(pt, n, dt, target, telemetry):  # Повторяется с част
             for key in correction_vector.keys():
                 correction_vector[key] += drone_vect[key]
         set_vel(pt, correction_vector['x'], correction_vector['y'], correction_vector['z'])
-        # print(f'{n}: CORRECTION', correction_vector)
         return
-        # vect_len = get_distance(telemetry['x'], telemetry['y'], telemetry['z'], drone['x'], drone['y'], drone['z'])
-        # for key in correction_vector.keys():
-        #     correction_vector[key] += (drone[key] - telemetry[key]) / vect_len
 
     if current_obstacle[n]['state'] == 'takeoff':
         # скорость вверх
@@ -544,24 +520,22 @@ def offboard_loop():  # Запускается один раз
             # вектора скорости, см. также описание mavlink сообщения
             # https://mavlink.io/en/messages/common.html#SET_POSITION_TARGET_LOCAL_NED
             pt.coordinate_frame = pt.FRAME_LOCAL_NED
-            if dt > 15:
-                set_mode(n, "OFFBOARD")  # Переключение в режим полёта по программе
-                arming(n, True)
+
             try:
                 # telemetry = data[n].get('local_position/pose')  # Получение текущих координат дрона
                 telemetry = telemetries[n]  # Получение текущих координат дрона
                 if telemetry is not None:
                     telems[n].publish(str(telemetry['x']) + ' ' + str(telemetry['y']) + ' ' + str(
                         telemetry['z']))
+                    if not is_anomaly(telemetry):
+                        set_mode(n, "OFFBOARD")  # Переключение в режим полёта по программе
+                        arming(n, True)
                 else:
                     telems[n].publish(str(telemetry))
                 # Обнаружение аномальной телеметрии
                 if telemetry is None:
                     # print(f'{n}: TELEMETRY IS MISSING')
                     raise IndexError
-                if is_anomaly(telemetry):
-                    pass
-                    # print(f'{n}: TELEMETRY IS ABNORMAL')
 
                 target = set_target(n, telemetry)
                 pos = Point(telemetry['x'], telemetry['y'], telemetry['z'])
