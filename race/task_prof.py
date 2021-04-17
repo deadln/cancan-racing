@@ -332,15 +332,15 @@ def get_lz(n):
     land_zone = dict(centrals[-1]['points'][-1])
     norm_vect = get_wall_norm_vect(centrals[-1]['points'])  # Вектор в глухую стену
     # Сдвигаем точку до другого края посадочной площадки
-    land_zone['x'] -= norm_vect['x'] * 2
-    land_zone['y'] -= norm_vect['y'] * 2
+    land_zone['x'] -= norm_vect['x'] * 3
+    land_zone['y'] -= norm_vect['y'] * 3
     # Поворачиваем вектор на 90 градусов влево
     swp = norm_vect['x']
     norm_vect['x'] = norm_vect['y'] * (-1)
     norm_vect['y'] = swp
     # Сдвигаемся в левый нижний угол посадочной площадки
-    land_zone['x'] += norm_vect['x'] * 8
-    land_zone['y'] += norm_vect['y'] * 8
+    land_zone['x'] += norm_vect['x'] * 7
+    land_zone['y'] += norm_vect['y'] * 7
     lz_num = len(lz)  # Номер посадочного места
     norm_vect = get_wall_norm_vect(centrals[-1]['points'])
     # Отсчитываем посадочное место в сторону глухой стены
