@@ -326,6 +326,13 @@ def mc_race(pt, n, dt, target, telemetry):  # Повторяется с част
             set_vel(pt, target['x'], target['y'], target['z'])
 
 
+def is_good_hole(hole):
+    if (hole['w'] >= 1) and (hole['h'] >= 0.4):
+        return True
+    else:
+        return False
+
+
 # Получить место для посадки
 def get_lz(n):
     # Точка отчёта - последняя точка последней центральной линии
