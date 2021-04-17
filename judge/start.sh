@@ -1,7 +1,5 @@
 #!/bin/bash
 
-team='team'
-
 s_dir=../
 
 if [[ -z "$1" ]]; then
@@ -15,6 +13,11 @@ if [[ -z "$sim" || -z "$type" || -z "$num" || -z "$world" || -z "$u_cmd" ]]; the
   echo "invalid vars in $1"
   exit
 fi
+
+if [[ -z "$team" ]]; then
+  team="Неизвестная_команда"
+fi
+
 
 model="iris"
 if [ "$type" == "vtol" ]; then
