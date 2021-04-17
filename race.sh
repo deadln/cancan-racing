@@ -45,9 +45,9 @@ if [ "$1" == "prof" ]; then
   ./bin/path_gen.py $model $num race/centrals${suf}.txt race/test_ws${suf}/ 20 $walls &
 fi
 
-mode="mc"
-if [model == "standard_vtol"]; then
-  mode="vtol"
-fi
+# mode="mc"
+# if [ model == "standard_vtol" ]; then
+#   mode="vtol"
+# fi
 #./race/run.py $mode
-./race/task_prof.py $num
+# ./race/task_prof.py $num

@@ -128,7 +128,7 @@ if __name__ == '__main__':
         # noinspection PyUnresolvedReferences
         Thread(target=os.system,
                args=(
-                   "python3 /home/$USER/drone-games/judge/formation_judge.py {} {} {}".format(parser_args.model,
+                   "python3 /home/ivanov_sv/drone-games/judge/formation_judge.py {} {} {}".format(parser_args.model,
                                                                                               parser_args.num,
                                                                                               counter,
                                                                                               parser_args.team),)
@@ -137,7 +137,7 @@ if __name__ == '__main__':
         # noinspection PyUnresolvedReferences
         Thread(target=os.system,
                args=(
-                   "python3 /home/$USER/drone-games/judge/race_judge.py {} {} {}".format(parser_args.model,
+                   "python3 /home/ivanov_sv/drone-racing/judge/race_judge.py {} {} {}".format(parser_args.model,
                                                                                          parser_args.num,
                                                                                          counter,
                                                                                          parser_args.team),)).start()
