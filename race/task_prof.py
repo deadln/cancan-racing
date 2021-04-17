@@ -53,7 +53,7 @@ TURN_POINT_BIAS = 7
 
 # Функция для определения аномальной телеметрии
 def is_anomaly(telemetry):
-    return telemetry['x'] < 0.1 and telemetry['y'] < 0.1
+    return -0.1 < telemetry['x'] < 0.1 and -0.1 < telemetry['y'] < 0.1
 
 
 # Функция знака
