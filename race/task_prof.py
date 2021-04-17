@@ -129,6 +129,7 @@ def get_norm_vect(p1, p2):
     vect['z'] = vect['z'] / vect_len
     return vect
 
+
 # Получение нормализованного вектора, направленного в сторону стены
 def get_wall_norm_vect(cent_line):
     # vect = {'x': cent_line[-1]['x'] - cent_line[-2]['x'], 'y': cent_line[-1]['y'] - cent_line[-2]['y'],
@@ -303,7 +304,6 @@ def get_turn_point(n):
     for key in v2.keys():
         turn_point[key] += (v1[key] + v2[key]) * TURN_POINT_BIAS
     return turn_point
-
 
 
 def get_telemetry(n):
@@ -538,6 +538,18 @@ def offboard_loop():  # Запускается один раз
             continue
         for n in range(1, instances_num + 1):
             telemetries[n] = get_telemetry(n)
+
+        # if len(lz) == instances_num:
+        #     if telemetries[n] is None:
+        #         exit(0)
+        #     flag = True
+        #     for n in range(1, instances_num + 1):
+        #         if get_distance(telemetry['x'], telemetry['y'], telemetry['z'], lz[n]['x'], lz[n]['y'],
+        #                         lz[n]['z']) > 0.3:
+        #             flag = False
+        #             break
+        #         if flag:
+        #             exit(0)
         # управляем каждым аппаратом централизованно
         for n in range(1, instances_num + 1):
             # В ЭТОМ ЦИКЛЕ МЫ БУДЕМ ПОЛУЧАТЬ ДАННЫЕ О ТРАССЕ И ЗАДАВАТЬ ПОЛЁТНЫЕ ЦЕЛИ

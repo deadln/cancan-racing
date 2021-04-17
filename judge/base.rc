@@ -1,7 +1,7 @@
 sim="race"
 type="mc"
 
-world="race_1.world"
+world="race.world"
 num=6
 
 u_cmd="python3 $HOME/drone-games/race/task_prof.py $num"
