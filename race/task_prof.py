@@ -34,6 +34,7 @@ lz = {}  # Словарь с местами "посадки" для дронов
 telemetry_correction = {}  # Словарь корректировки телеметрии
 telemetries = {}
 drone_departion_time = -1
+turn_points = {}
 turn_lines = {}
 turn_point_counter = 0
 
@@ -50,6 +51,7 @@ TURN_POINT_BIAS = 7
 TURN_POINT_DISTANCE = 2
 POINTS_PER_TURN = 8
 FULL_THROTTLE_DISTANCE = 10
+TURN_RADIUS = 8
 
 
 ## Вспомогательные функции
@@ -301,6 +303,11 @@ def get_least_count_hole(holes_list):
 def get_turn_point(n, telemetry):
     global turn_point_counter
     if n in turn_lines.keys():
+        # cur_cent_point = centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num']]
+        pr_point = turn_lines[n].pr_point(dict_to_point(telemetry)).get_dict()
+        if get_distance(pr_point['x'], pr_point['y'], pr_point['z'], turn_points[n]['x'], turn_points[n]['y'], turn_points[n]['z']) > TURN_RADIUS:
+            print(f'{n}: CORRECTION')
+            return turn_points[n]
         return turn_lines[n].pr_point(dict_to_point(telemetry)).get_dict()
     v1 = get_norm_vect(centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num']],
                        centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num'] + 1])
@@ -320,7 +327,14 @@ def get_turn_point(n, telemetry):
     # turn_point_counter = (turn_point_counter + 1) % POINTS_PER_TURN
     # turn_lines[n] = turn_point
     print('TURN', dict_to_point(turn_point), dict_to_point(line_point))
+    turn_points[n] = turn_point
     turn_lines[n] = Line(dict_to_point(turn_point), dict_to_point(line_point))
+    cur_cent_point = centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num']]
+    pr_point = turn_lines[n].pr_point(dict_to_point(telemetry)).get_dict()
+    if get_distance(pr_point['x'], pr_point['y'], pr_point['z'], turn_points[n]['x'], turn_points[n]['y'],
+                    turn_points[n]['z']) > TURN_RADIUS:
+        print(f'{n}: CORRECTION')
+        return turn_points[n]
     return turn_lines[n].pr_point(dict_to_point(telemetry)).get_dict()
 
 
