@@ -38,12 +38,12 @@ turn_points = {}
 turn_lines = {}
 turn_point_counter = 0
 
-DELAY_BETWEEN_DRONES = 1.7
+DELAY_BETWEEN_DRONES = 2
 TURN_EPS = 2  # Окрестность, при вхождении в которую поворот считается пройденным
 LINE_EPS = 0.3  # Окрестность линии, при вхождению в которую включается управление скоростями
 TARGET_POINT_BIAS = -0.7  # Величина смещения точки цели полёта
 TARGET_SURFACE_BIAS = 0.6  # Величина смещения плоскости стены
-SPEED = 10  # Скорость сближения с отверстием
+SPEED = 8  # Скорость сближения с отверстием
 INF = 9999999999999
 COLLISION_DISTANCE = 1.2
 CORRECTION_SPEED = 1
