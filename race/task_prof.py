@@ -53,6 +53,7 @@ POINTS_PER_TURN = 8
 FULL_THROTTLE_DISTANCE = 10
 TURN_RADIUS = 8
 DESCENT_BIAS = 7
+DESCENT_DIST = 3
 
 
 ## Вспомогательные функции
@@ -306,7 +307,6 @@ def get_turn_point(n, telemetry):
     if n in turn_lines.keys():
         pr_point = turn_lines[n].pr_point(dict_to_point(telemetry)).get_dict()
         if get_distance(pr_point['x'], pr_point['y'], pr_point['z'], turn_points[n]['x'], turn_points[n]['y'], turn_points[n]['z']) > TURN_RADIUS:
-            print(f'{n}: CORRECTION')
             return turn_points[n]
         return turn_lines[n].pr_point(dict_to_point(telemetry)).get_dict()
     cur_cent_point = centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num']]
@@ -337,7 +337,6 @@ def get_turn_point(n, telemetry):
     pr_point = turn_lines[n].pr_point(dict_to_point(telemetry)).get_dict()
     if get_distance(pr_point['x'], pr_point['y'], pr_point['z'], turn_points[n]['x'], turn_points[n]['y'],
                     turn_points[n]['z']) > TURN_RADIUS:
-        print(f'{n}: CORRECTION')
         return turn_points[n]
     return turn_lines[n].pr_point(dict_to_point(telemetry)).get_dict()
 
@@ -479,7 +478,12 @@ def set_target(n, telemetry):
         # Point(telemetry['x'], telemetry['y'], telemetry['z'])).pr_point(dict_to_point(telemetry)).get_dict()
         #     for key in vect_to_line.keys():
         #         vect_to_line[key] -= telemetry[key]
-            if is_in_projection(n, telemetry) and \
+            if walls[current_obstacle[n]['wall_num']]['surface'].get_point_dist(dict_to_point(telemetry)) < DESCENT_DIST + TARGET_SURFACE_BIAS and \
+                    telemetry['z'] > target['z'] + walls[current_obstacle[n]['wall_num']]['holes'][current_obstacle[n]['hole_num']]['h'] / 2:
+                print(f'{n}: DESCENTING')
+                target = {'x': 0, 'y': 0, 'z': -1}
+                target['mode'] = 'vel'
+            elif is_in_projection(n, telemetry) and \
                     walls[current_obstacle[n]['wall_num']]['surface'].get_point_dist(
                         Point(telemetry['x'], telemetry['y'], telemetry['z'])) < FULL_THROTTLE_DISTANCE:
                 # Смещаем цель полёта вперёд, за стену
@@ -489,6 +493,7 @@ def set_target(n, telemetry):
                 target = get_speed_vect({'x': telemetry['x'], 'y': telemetry['y'],
                                          'z': telemetry['z']}, target, SPEED)
                 target['mode'] = 'vel'
+
             # Если мы далеко от отверстия, то аккуратно приближаемся
             else:
                 target['mode'] = 'pos'
