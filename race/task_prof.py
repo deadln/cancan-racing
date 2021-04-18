@@ -38,17 +38,18 @@ turn_points = {}
 turn_point_counter = 0
 
 TURN_EPS = 1.9  # Окрестность, при вхождении в которую поворот считается пройденным
-LINE_EPS = 0.4  # Окрестность линии, при вхождению в которую включается управление скоростями
+LINE_EPS = 0.2  # Окрестность линии, при вхождению в которую включается управление скоростями
 DELAY_BETWEEN_DRONES = 2  # Задержка между вылетами дронов в секундах
 TARGET_POINT_BIAS = -0.6  # Величина смещения точки цели полёта
 TARGET_SURFACE_BIAS = 0.6  # Величина смещения плоскости стены
-SPEED = 3  # Скорость сближения с отверстием
+SPEED = 8  # Скорость сближения с отверстием
 INF = 9999999999999
 COLLISION_DISTANCE = 1.2
 CORRECTION_SPEED = 1
 TURN_POINT_BIAS = 7
 TURN_POINT_DISTANCE = 2
 POINTS_PER_TURN = 8
+FULL_THROTTLE_DISTANCE = 10
 
 
 ## Вспомогательные функции
@@ -377,6 +378,16 @@ def is_good_hole(hole):
     else:
         return False
 
+def is_in_projection(n, telemetry):
+    hole = walls[current_obstacle[n]['wall_num']]['holes'][current_obstacle[n]['hole_num']]
+    vect_to_line = hole['line'].pr_point(dict_to_point(telemetry)).get_dict()
+    for key in vect_to_line.keys():
+        vect_to_line[key] -= telemetry[key]
+    flat_vect = {'x': math.hypot(vect_to_line['x'], vect_to_line['y']), 'y': vect_to_line['z']}
+    if flat_vect['x'] < hole['w'] / 2 - LINE_EPS and flat_vect['y'] < hole['h'] / 2 - LINE_EPS:
+        print(f'{n} IN PROJECTION')
+        return True
+    return False
 
 # Получить место для посадки
 def get_lz(n):
@@ -439,12 +450,17 @@ def set_target(n, telemetry):
             wall_vect = get_wall_norm_vect(centrals[current_obstacle[n]['wall_num']]['points'])
             for key in target.keys():
                 target[key] += wall_vect[key] * TARGET_POINT_BIAS
-            if get_current_line_distance(n, telemetry) < min(
-                    walls[current_obstacle[n]['wall_num']]['holes'][current_obstacle[n]['hole_num']]['w'],
-                    walls[current_obstacle[n]['wall_num']]['holes'][current_obstacle[n]['hole_num']][
-                        'h']) / 2 - LINE_EPS and \
+            # if get_current_line_distance(n, telemetry) < min(
+            #         walls[current_obstacle[n]['wall_num']]['holes'][current_obstacle[n]['hole_num']]['w'],
+            #         walls[current_obstacle[n]['wall_num']]['holes'][current_obstacle[n]['hole_num']][
+            #             'h']) / 2 - LINE_EPS and \
+        #     vect_to_line = walls[current_obstacle[n]['wall_num']]['holes'][current_obstacle[n]['hole_num']]['line'].get_point_dist(
+        # Point(telemetry['x'], telemetry['y'], telemetry['z'])).pr_point(dict_to_point(telemetry)).get_dict()
+        #     for key in vect_to_line.keys():
+        #         vect_to_line[key] -= telemetry[key]
+            if is_in_projection(n, telemetry) and \
                     walls[current_obstacle[n]['wall_num']]['surface'].get_point_dist(
-                        Point(telemetry['x'], telemetry['y'], telemetry['z'])) < 5:
+                        Point(telemetry['x'], telemetry['y'], telemetry['z'])) < FULL_THROTTLE_DISTANCE:
                 # Смещаем цель полёта вперёд, за стену
                 for key in target.keys():
                     target[key] -= wall_vect[key] * TARGET_POINT_BIAS * 2
