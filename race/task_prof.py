@@ -375,10 +375,10 @@ def mc_race(pt, n, dt, target, telemetry):  # Повторяется с част
 
     if current_obstacle[n]['state'] == 'takeoff':
         # скорость вверх
-        set_vel(pt, 0, 0, 0.5)
+        set_vel(pt, 0, 0, 0.4)
     if current_obstacle[n]['state'] == 'takeoff' and \
             (drone_departion_time == -1 or dt - drone_departion_time > DELAY_BETWEEN_DRONES) and \
-            (telemetry is not None and telemetry['z'] >= 0.5) or \
+            (telemetry is not None and telemetry['z'] >= 0.3) or \
             current_obstacle[n]['state'] == 'flight' or current_obstacle[n]['state'] == 'landing':
         if current_obstacle[n]['state'] == 'takeoff':
             current_obstacle[n]['state'] = 'flight'
