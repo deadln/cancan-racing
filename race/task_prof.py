@@ -34,7 +34,7 @@ lz = {}  # Словарь с местами "посадки" для дронов
 telemetry_correction = {}  # Словарь корректировки телеметрии
 telemetries = {}
 drone_departion_time = -1
-turn_points = {}
+turn_lines = {}
 turn_point_counter = 0
 
 TURN_EPS = 1.9  # Окрестность, при вхождении в которую поворот считается пройденным
@@ -298,10 +298,10 @@ def get_least_count_hole(holes_list):
     return min_num
 
 
-def get_turn_point(n):
+def get_turn_point(n, telemetry):
     global turn_point_counter
-    if n in turn_points.keys():
-        return turn_points[n]
+    if n in turn_lines.keys():
+        return turn_lines[n].pr_point(dict_to_point(telemetry)).get_dict()
     v1 = get_norm_vect(centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num']],
                        centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num'] + 1])
     v2 = get_norm_vect(centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num']],
@@ -310,14 +310,18 @@ def get_turn_point(n):
     v1_p = dict_to_point(v1)
     v2_p = dict_to_point(v2)
     vect_cp = v1_p.get_cp(v2_p).get_dict()
+    line_point = {}
     for key in v2.keys():
         turn_point[key] += (v1[key] + v2[key]) * TURN_POINT_BIAS
-        vect_cp[key] *= TURN_POINT_DISTANCE
-        turn_point[key] -= vect_cp[key] * (POINTS_PER_TURN / 2)
-        turn_point[key] += vect_cp[key] * turn_point_counter
-    turn_point_counter = (turn_point_counter + 1) % POINTS_PER_TURN
-    turn_points[n] = turn_point
-    return turn_points[n]
+        line_point[key] = turn_point[key] + vect_cp[key]
+    #     vect_cp[key] *= TURN_POINT_DISTANCE
+    #     turn_point[key] -= vect_cp[key] * (POINTS_PER_TURN / 2)
+    #     turn_point[key] += vect_cp[key] * turn_point_counter
+    # turn_point_counter = (turn_point_counter + 1) % POINTS_PER_TURN
+    # turn_lines[n] = turn_point
+    print('TURN', dict_to_point(turn_point), dict_to_point(line_point))
+    turn_lines[n] = Line(dict_to_point(turn_point), dict_to_point(line_point))
+    return turn_lines[n].pr_point(dict_to_point(telemetry)).get_dict()
 
 
 def get_telemetry(n):
@@ -385,7 +389,6 @@ def is_in_projection(n, telemetry):
         vect_to_line[key] -= telemetry[key]
     flat_vect = {'x': math.hypot(vect_to_line['x'], vect_to_line['y']), 'y': vect_to_line['z']}
     if flat_vect['x'] < hole['w'] / 2 - LINE_EPS and flat_vect['y'] < hole['h'] / 2 - LINE_EPS:
-        print(f'{n} IN PROJECTION')
         return True
     return False
 
@@ -474,7 +477,7 @@ def set_target(n, telemetry):
                 target['tag'] = 'approaching'
         # В противном случае сначала надо достигнуть точки центральной линии по пути
         else:
-            target = get_turn_point(n)
+            target = get_turn_point(n, telemetry)
             # target = centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num']]
             target['mode'] = 'pos'
             target['tag'] = 'turn'
@@ -623,10 +626,11 @@ def offboard_loop():  # Запускается один раз
                     target = set_target(n, telemetry)  # Назначение новой стены
                 # Если достигнута окрестность центра поворота
                 elif current_obstacle[n]['point_num'] < len(centrals[current_obstacle[n]['wall_num']]['points']) - 1 and \
-                        get_distance(telemetry['x'], telemetry['y'], telemetry['z'],
-                                     target['x'], target['y'], target['z']) < TURN_EPS:
+                    turn_lines[n].get_point_dist(dict_to_point(telemetry)) < TURN_EPS:
+                        # get_distance(telemetry['x'], telemetry['y'], telemetry['z'],
+                        #              target['x'], target['y'], target['z']) < TURN_EPS:
                     print(f'{n}:NEXT POINT')
-                    turn_points.pop(n, None)
+                    turn_lines.pop(n, None)
                     current_obstacle[n]['point_num'] += 1
                     target = set_target(n, telemetry)
             # Исключение, которое срабатывает когда дрон пролетел отверстие, а следующая стена ещё не была опубликована
