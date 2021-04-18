@@ -266,14 +266,23 @@ def set_vel(pt, vx, vy, vz):
     pt.velocity.z = vz
 
 
+def p(dist):
+    if dist > 12:
+        return 10
+    return dist * 2
+
+
 # Получить вектор скорости для полёта из точки p1 в точку p2 со скоростью speed
-def get_speed_vect(p1, p2, speed):
+def get_speed_vect(p1, p2, speed=None):
     vect = dict(p2)
     vect_len = get_distance(p1['x'], p1['y'], p1['z'], p2['x'], p2['y'], p2['z'])
+    if speed is None:
+        speed = p(vect_len)
     for key in vect.keys():
         vect[key] -= p1[key]
         vect[key] /= vect_len
         vect[key] *= speed
+
     return vect
 
 
