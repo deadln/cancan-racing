@@ -52,6 +52,7 @@ TURN_POINT_DISTANCE = 2
 POINTS_PER_TURN = 8
 FULL_THROTTLE_DISTANCE = 10
 TURN_RADIUS = 8
+DESCENT_BIAS = 7
 
 
 ## Вспомогательные функции
@@ -303,12 +304,12 @@ def get_least_count_hole(holes_list):
 def get_turn_point(n, telemetry):
     global turn_point_counter
     if n in turn_lines.keys():
-        # cur_cent_point = centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num']]
         pr_point = turn_lines[n].pr_point(dict_to_point(telemetry)).get_dict()
         if get_distance(pr_point['x'], pr_point['y'], pr_point['z'], turn_points[n]['x'], turn_points[n]['y'], turn_points[n]['z']) > TURN_RADIUS:
             print(f'{n}: CORRECTION')
             return turn_points[n]
         return turn_lines[n].pr_point(dict_to_point(telemetry)).get_dict()
+    cur_cent_point = centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num']]
     v1 = get_norm_vect(centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num']],
                        centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num'] + 1])
     v2 = get_norm_vect(centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num']],
@@ -320,6 +321,9 @@ def get_turn_point(n, telemetry):
     line_point = {}
     for key in v2.keys():
         turn_point[key] += (v1[key] + v2[key]) * TURN_POINT_BIAS
+        if key == 'z' and v2['z'] > 0.1:
+            print('DESCENT')
+            turn_point[key] = cur_cent_point['z'] - DESCENT_BIAS
         line_point[key] = turn_point[key] + vect_cp[key]
     #     vect_cp[key] *= TURN_POINT_DISTANCE
     #     turn_point[key] -= vect_cp[key] * (POINTS_PER_TURN / 2)
