@@ -35,12 +35,12 @@ telemetry_correction = {}  # Словарь корректировки теле�
 telemetries = {}
 drone_departion_time = -1
 turn_points = {}
+turn_lines = {}
 turn_point_counter = 0
 
-TURN_EPS = 1.9  # Окрестность, при вхождении в которую поворот считается пройденным
-LINE_EPS = 0.2  # Окрестность линии, при вхождению в которую включается управление скоростями
-DELAY_BETWEEN_DRONES = 2  # Задержка между вылетами дронов в секундах
-TARGET_POINT_BIAS = -0.6  # Величина смещения точки цели полёта
+TURN_EPS = 2  # Окрестность, при вхождении в которую поворот считается пройденным
+LINE_EPS = 0.3  # Окрестность линии, при вхождению в которую включается управление скоростями
+TARGET_POINT_BIAS = -0.7  # Величина смещения точки цели полёта
 TARGET_SURFACE_BIAS = 0.6  # Величина смещения плоскости стены
 SPEED = 8  # Скорость сближения с отверстием
 INF = 9999999999999
@@ -50,6 +50,8 @@ TURN_POINT_BIAS = 7
 TURN_POINT_DISTANCE = 2
 POINTS_PER_TURN = 8
 FULL_THROTTLE_DISTANCE = 10
+TURN_RADIUS = 8
+DESCENT_BIAS = 7
 
 
 ## Вспомогательные функции
@@ -298,10 +300,15 @@ def get_least_count_hole(holes_list):
     return min_num
 
 
-def get_turn_point(n):
+def get_turn_point(n, telemetry):
     global turn_point_counter
-    if n in turn_points.keys():
-        return turn_points[n]
+    if n in turn_lines.keys():
+        pr_point = turn_lines[n].pr_point(dict_to_point(telemetry)).get_dict()
+        if get_distance(pr_point['x'], pr_point['y'], pr_point['z'], turn_points[n]['x'], turn_points[n]['y'], turn_points[n]['z']) > TURN_RADIUS:
+            print(f'{n}: CORRECTION')
+            return turn_points[n]
+        return turn_lines[n].pr_point(dict_to_point(telemetry)).get_dict()
+    cur_cent_point = centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num']]
     v1 = get_norm_vect(centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num']],
                        centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num'] + 1])
     v2 = get_norm_vect(centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num']],
@@ -310,14 +317,28 @@ def get_turn_point(n):
     v1_p = dict_to_point(v1)
     v2_p = dict_to_point(v2)
     vect_cp = v1_p.get_cp(v2_p).get_dict()
+    line_point = {}
     for key in v2.keys():
         turn_point[key] += (v1[key] + v2[key]) * TURN_POINT_BIAS
-        vect_cp[key] *= TURN_POINT_DISTANCE
-        turn_point[key] -= vect_cp[key] * (POINTS_PER_TURN / 2)
-        turn_point[key] += vect_cp[key] * turn_point_counter
-    turn_point_counter = (turn_point_counter + 1) % POINTS_PER_TURN
+        if key == 'z' and v2['z'] > 0.1:
+            print('DESCENT')
+            turn_point[key] = cur_cent_point['z'] - DESCENT_BIAS
+        line_point[key] = turn_point[key] + vect_cp[key]
+    #     vect_cp[key] *= TURN_POINT_DISTANCE
+    #     turn_point[key] -= vect_cp[key] * (POINTS_PER_TURN / 2)
+    #     turn_point[key] += vect_cp[key] * turn_point_counter
+    # turn_point_counter = (turn_point_counter + 1) % POINTS_PER_TURN
+    # turn_lines[n] = turn_point
+    print('TURN', dict_to_point(turn_point), dict_to_point(line_point))
     turn_points[n] = turn_point
-    return turn_points[n]
+    turn_lines[n] = Line(dict_to_point(turn_point), dict_to_point(line_point))
+    cur_cent_point = centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num']]
+    pr_point = turn_lines[n].pr_point(dict_to_point(telemetry)).get_dict()
+    if get_distance(pr_point['x'], pr_point['y'], pr_point['z'], turn_points[n]['x'], turn_points[n]['y'],
+                    turn_points[n]['z']) > TURN_RADIUS:
+        print(f'{n}: CORRECTION')
+        return turn_points[n]
+    return turn_lines[n].pr_point(dict_to_point(telemetry)).get_dict()
 
 
 def get_telemetry(n):
@@ -385,7 +406,6 @@ def is_in_projection(n, telemetry):
         vect_to_line[key] -= telemetry[key]
     flat_vect = {'x': math.hypot(vect_to_line['x'], vect_to_line['y']), 'y': vect_to_line['z']}
     if flat_vect['x'] < hole['w'] / 2 - LINE_EPS and flat_vect['y'] < hole['h'] / 2 - LINE_EPS:
-        print(f'{n} IN PROJECTION')
         return True
     return False
 
@@ -474,7 +494,7 @@ def set_target(n, telemetry):
                 target['tag'] = 'approaching'
         # В противном случае сначала надо достигнуть точки центральной линии по пути
         else:
-            target = get_turn_point(n)
+            target = get_turn_point(n, telemetry)
             # target = centrals[current_obstacle[n]['wall_num']]['points'][current_obstacle[n]['point_num']]
             target['mode'] = 'pos'
             target['tag'] = 'turn'
@@ -623,10 +643,11 @@ def offboard_loop():  # Запускается один раз
                     target = set_target(n, telemetry)  # Назначение новой стены
                 # Если достигнута окрестность центра поворота
                 elif current_obstacle[n]['point_num'] < len(centrals[current_obstacle[n]['wall_num']]['points']) - 1 and \
-                        get_distance(telemetry['x'], telemetry['y'], telemetry['z'],
-                                     target['x'], target['y'], target['z']) < TURN_EPS:
+                    turn_lines[n].get_point_dist(dict_to_point(telemetry)) < TURN_EPS:
+                        # get_distance(telemetry['x'], telemetry['y'], telemetry['z'],
+                        #              target['x'], target['y'], target['z']) < TURN_EPS:
                     print(f'{n}:NEXT POINT')
-                    turn_points.pop(n, None)
+                    turn_lines.pop(n, None)
                     current_obstacle[n]['point_num'] += 1
                     target = set_target(n, telemetry)
             # Исключение, которое срабатывает когда дрон пролетел отверстие, а следующая стена ещё не была опубликована
