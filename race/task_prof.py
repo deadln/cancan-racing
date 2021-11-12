@@ -404,7 +404,7 @@ def is_in_projection(n, telemetry):
     vect_to_line = hole['line'].pr_point(dict_to_point(telemetry)).get_dict()
     for key in vect_to_line.keys():
         vect_to_line[key] -= telemetry[key]
-    flat_vect = {'x': math.hypot(vect_to_line['x'], vect_to_line['y']), 'y': vect_to_line['z']}
+    flat_vect = {'x': math.hypot(vect_to_line['x'], vect_to_line['y']), 'y': abs(vect_to_line['z'])}
     if flat_vect['x'] < hole['w'] / 2 - LINE_EPS and flat_vect['y'] < hole['h'] / 2 - LINE_EPS:
         return True
     return False
@@ -478,12 +478,12 @@ def set_target(n, telemetry):
         # Point(telemetry['x'], telemetry['y'], telemetry['z'])).pr_point(dict_to_point(telemetry)).get_dict()
         #     for key in vect_to_line.keys():
         #         vect_to_line[key] -= telemetry[key]
-            if walls[current_obstacle[n]['wall_num']]['surface'].get_point_dist(dict_to_point(telemetry)) < DESCENT_DIST + TARGET_SURFACE_BIAS and \
-                    telemetry['z'] > target['z'] + walls[current_obstacle[n]['wall_num']]['holes'][current_obstacle[n]['hole_num']]['h'] / 2:
-                print(f'{n}: DESCENTING')
-                target = {'x': 0, 'y': 0, 'z': -1}
-                target['mode'] = 'vel'
-            elif is_in_projection(n, telemetry) and \
+            #if walls[current_obstacle[n]['wall_num']]['surface'].get_point_dist(dict_to_point(telemetry)) < DESCENT_DIST + TARGET_SURFACE_BIAS and \
+            #        telemetry['z'] > target['z'] + walls[current_obstacle[n]['wall_num']]['holes'][current_obstacle[n]['hole_num']]['h'] / 2:
+            #    print(f'{n}: DESCENTING')
+            #    target = {'x': 0, 'y': 0, 'z': -1}
+            #    target['mode'] = 'vel'
+            if is_in_projection(n, telemetry) and \
                     walls[current_obstacle[n]['wall_num']]['surface'].get_point_dist(
                         Point(telemetry['x'], telemetry['y'], telemetry['z'])) < FULL_THROTTLE_DISTANCE:
                 # Смещаем цель полёта вперёд, за стену
